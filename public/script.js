@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    StructuralWind — Professional Wind Analysis  
    AS/NZS 1170.2:2021 compliant calculations
-   With Firebase Auth + Stripe Payment Integration
+   With Firebase Auth + Local-First Workspace
    ═══════════════════════════════════════════════════════════════════ */
 
 // ═════════════ FIREBASE CONFIG ═════════════
@@ -57,23 +57,18 @@ function updateIfcUploadSigninHint(){
   el.style.color = 'var(--text2)';
 }
 
-let userSubscription = { active: false, plan: 'free', teamInvitee: false };
+let userSubscription = { active: true, plan: 'local', teamInvitee: false };
 
-// Plan hierarchy: free < pro < team < enterprise
-const PLAN_LEVELS = { free: 0, pro: 1, team: 2, enterprise: 3 };
-const PLAN_LABELS = { free: 'Free Plan', pro: 'Pro -- $10/mo', team: 'Team -- $30/mo', enterprise: 'Enterprise -- Custom' };
-const PLAN_MAX_MEMBERS = { free: 1, pro: 1, team: 5, enterprise: 25 };
+const PLAN_LEVELS = { local: 1 };
+const PLAN_LABELS = { local: 'Local Workspace' };
+const PLAN_MAX_MEMBERS = { local: 1 };
 const PLAN_FEATURES = {
-  free:       { pdf: false, save: false, shared: false, api: false, batch: false, sso: false, templates: false, branding: false, activityLog: false, cloudAi: false },
-  pro:        { pdf: true,  save: true,  shared: false, api: false, batch: false, sso: false, templates: false, branding: false, activityLog: false, cloudAi: true  },
-  team:       { pdf: true,  save: true,  shared: true,  api: true,  batch: false, sso: false, templates: false, branding: false, activityLog: true,  cloudAi: true  },
-  enterprise: { pdf: true,  save: true,  shared: true,  api: true,  batch: true,  sso: true,  templates: true,  branding: true,  activityLog: true,  cloudAi: true  }
+  local: { pdf: true, save: true, shared: false, api: false, batch: false, sso: false, templates: false, branding: false, activityLog: false, cloudAi: true }
 };
 function hasPlanFeature(feature){ return PLAN_FEATURES[userSubscription.plan]?.[feature] || false; }
-function isPaidPlan(){ return PLAN_LEVELS[userSubscription.plan] >= 1; }
-function hasSharedProjects(){ return PLAN_FEATURES[userSubscription.plan]?.shared || false; }
-/** Team/Enterprise owner, or invited on another account's roster (may be Free/Pro) — can open Shared Projects list. */
-function canAccessSharedProjects(){ return hasSharedProjects() || !!userSubscription.teamInvitee; }
+function isPaidPlan(){ return true; }
+function hasSharedProjects(){ return false; }
+function canAccessSharedProjects(){ return false; }
 
 const TERRAIN_POLAR_FREE_USES = 10;
 function terrainPolarStorageKey(){
@@ -136,21 +131,6 @@ function incrementMapOverlayPressCount(overlayId){
 }
 /** Each map overlay button press: false = show auth or upgrade and abort toggle. */
 function mapOverlayPressAllowed(overlayId){
-  if(!currentUser){
-    const msg = overlayId === 'tc'
-      ? 'Sign in to use TC zones'
-      : overlayId === 'ms'
-        ? 'Sign in to use Ms shielding'
-        : 'Sign in to use Mt topographic';
-    toast(msg);
-    showAuthOverlay();
-    return false;
-  }
-  if(!isPaidPlan() && getMapOverlayPressCount(overlayId) >= MAP_OVERLAY_FREE_USES){
-    toast('Upgrade to Pro for unlimited map overlay use');
-    openPaymentModal();
-    return false;
-  }
   return true;
 }
 
@@ -6891,7 +6871,7 @@ function dirPolarSectorClick(i){
       return;
     }
     if(!isPaidPlan() && getTerrainPolarUseCount() >= TERRAIN_POLAR_FREE_USES){
-      toast('Upgrade to Pro for unlimited terrain multiplier edits');
+      toast('Unlimited terrain multiplier edits are enabled in this local build.');
       openPaymentModal();
       dirPolarClosePopover();
       refreshDirectionalWindUI();
@@ -7111,7 +7091,7 @@ function renderDirTable(){
   }
   if(isTerrainPolarTab(tab) && terrainPolarBlocked){
     if(!currentUser) notes += '<div class="dir-polar-note">Sign in to edit terrain multipliers.</div>';
-    else notes += '<div class="dir-polar-note">Upgrade to Pro for unlimited terrain multiplier edits.</div>';
+    else notes += '<div class="dir-polar-note">Unlimited terrain multiplier edits are enabled in this local build.</div>';
   }
 
   el.innerHTML = `<div class="dir-polar-wrap${locked||terrainPolarBlocked?' dir-polar-locked':''}">`
@@ -7879,7 +7859,7 @@ async function autoDetectAllMultipliers(opts){
     applyOsmTcMsMdToState(h, [3,3,3,3,3,3,3,3], [1,1,1,1,1,1,1,1], { toast: false });
     applyElevationMtHillToState([1,1,1,1,1,1,1,1], { toast: false });
     setTerrainDataStatus('fallback', 'free tier — map terrain recalc disabled when moving site');
-    toast('Upgrade to Pro to recalculate terrain from the map when moving the site.');
+    toast('Terrain recalculation remains available in this local build.');
     refreshDirectionalWindUI();
     return;
   }
@@ -9651,8 +9631,7 @@ async function updateDocPreview(){
     html += `
     <div class="pro-cta">
       <h3>⚡ Unlock Full Professional Report</h3>
-      <p>Upgrade to Pro to access the full PDF report with clause references, pressure coefficients, Table 5.6 local (K<sub>l</sub>) pressures, all cardinal-direction design pressures, and 3D visualisation.</p>
-      <button onclick="openPaymentModal()">Upgrade — Plans from $10 NZD/month</button>
+      <p>This local build includes the full PDF report with clause references, pressure coefficients, Table 5.6 local (K<sub>l</sub>) pressures, all cardinal-direction design pressures, and 3D visualisation.</p>
     </div>
     <h2>Detailed Report Contents (Pro)</h2>
     <div class="locked-overlay" style="position:relative">
@@ -11610,8 +11589,8 @@ function initAuthListener(){
       currentUser = null;
       S.user.signedIn = false;
       S.user.name = 'Guest User';
-      S.user.plan = 'free';
-      userSubscription = { active: false, plan: 'free', teamInvitee: false };
+      S.user.plan = 'local';
+      userSubscription = { active: true, plan: 'local', teamInvitee: false };
 
       // Update UI
       document.getElementById('acct-name').textContent = 'Guest User';
@@ -11619,12 +11598,6 @@ function initAuthListener(){
       document.getElementById('btn-signin-menu').style.display = 'block';
       document.getElementById('btn-signout-menu').style.display = 'none';
       document.getElementById('btn-dashboard-menu').style.display = 'none';
-      document.getElementById('btn-manage-billing').style.display = 'none';
-      document.getElementById('btn-upgrade').style.display = '';
-      const sharedBtn = document.getElementById('btn-shared-projects');
-      if(sharedBtn) sharedBtn.style.display = 'none';
-      const shareMenuBtn = document.getElementById('btn-share-project-menu');
-      if(shareMenuBtn) shareMenuBtn.style.display = 'none';
       updatePlanUI();
       try{ refreshDirectionalWindUI(); }catch(e){}
       try{ updateIfcUploadSigninHint(); }catch(e){}
@@ -11633,93 +11606,26 @@ function initAuthListener(){
 }
 
 async function checkSubscriptionStatus(){
-  if(!currentUser) return;
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/check-subscription', {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + idToken,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if(response.ok){
-      const data = await response.json();
-      const plan = data.plan || (data.active ? 'pro' : 'free');
-      userSubscription = {
-        active: data.active || false,
-        plan: plan,
-        status: data.subscriptionStatus,
-        subscriptionId: data.subscriptionId,
-        members: data.members || [],
-        maxMembers: PLAN_MAX_MEMBERS[plan] || 1,
-        teamInvitee: !!data.teamInvitee
-      };
-
-      S.user.plan = userSubscription.plan;
-      updatePlanUI();
-
-      // Refresh doc preview to show/hide pro content
-      if(typeof updateDocPreview === 'function') try { updateDocPreview(); } catch(e){}
-    }
-  } catch(err){
-    console.warn('Could not check subscription:', err);
-  }
+  userSubscription = { active: true, plan: 'local', teamInvitee: false, members: [], maxMembers: 1 };
+  S.user.plan = userSubscription.plan;
+  updatePlanUI();
+  if(typeof updateDocPreview === 'function') try { updateDocPreview(); } catch(e){}
 }
 
 function updatePlanUI(){
-  const plan = userSubscription.plan;
-  const active = userSubscription.active;
-  const label = PLAN_LABELS[plan] || 'Free Plan';
-
+  const label = PLAN_LABELS[userSubscription.plan] || 'Local Workspace';
   document.getElementById('acct-plan').textContent = label;
-
-  // Show upgrade button for all plans below enterprise, with dynamic text
-  const upgradeBtn = document.getElementById('btn-upgrade');
-  if(plan === 'enterprise'){
-    upgradeBtn.style.display = 'none';
-  } else {
-    upgradeBtn.style.display = '';
-    // Show what the user can upgrade TO
-    if(plan === 'team') upgradeBtn.textContent = '\u26A1 Upgrade to Enterprise';
-    else if(plan === 'pro') upgradeBtn.textContent = '\u26A1 Upgrade to Team';
-    else upgradeBtn.textContent = '\u26A1 Upgrade';
-  }
-  document.getElementById('btn-manage-billing').style.display = active ? 'block' : 'none';
-
-  // Reset all plan buttons
-  ['free','pro','team','enterprise'].forEach(p=>{
-    const btn = document.getElementById('plan-btn-'+p);
-    if(!btn) return;
-    if(p === plan){
-      btn.textContent = 'Current Plan';
-      btn.classList.add('current');
-      btn.disabled = true;
-    } else if(p === 'enterprise'){
-      btn.textContent = 'Contact Us';
-      btn.classList.remove('current');
-      btn.disabled = false;
-    } else if(PLAN_LEVELS[p] < PLAN_LEVELS[plan]){
-      btn.textContent = p === 'free' ? 'Free' : 'Downgrade';
-      btn.classList.remove('current');
-      btn.disabled = false;
-    } else {
-      btn.textContent = 'Subscribe Now';
-      btn.classList.remove('current');
-      btn.disabled = false;
-    }
-  });
-
-  // Show/hide menu items based on plan
   const show = (id, cond) => { const el = document.getElementById(id); if(el) el.style.display = cond ? 'block' : 'none'; };
-  show('btn-saved-projects', hasPlanFeature('save'));
-  show('btn-shared-projects', canAccessSharedProjects());
-  show('btn-share-project-menu', hasSharedProjects());
-  show('btn-activity-log', hasPlanFeature('activityLog'));
-  show('btn-api-keys', hasPlanFeature('api'));
-  show('btn-templates', hasPlanFeature('templates'));
+  show('btn-saved-projects', true);
+  show('btn-shared-projects', false);
+  show('btn-share-project-menu', false);
+  show('btn-activity-log', false);
+  show('btn-api-keys', false);
+  show('btn-templates', false);
+  const upgradeBtn = document.getElementById('btn-upgrade');
+  if(upgradeBtn) upgradeBtn.style.display = 'none';
+  const billingBtn = document.getElementById('btn-manage-billing');
+  if(billingBtn) billingBtn.style.display = 'none';
   updateIfcAiAssistUI();
 }
 
@@ -11794,22 +11700,19 @@ async function signOutUser(){
 
 // ═══ Payment Modal ═══
 function openPaymentModal(){
-  if(!S.user.signedIn){
-    // Must sign in first
-    showAuthOverlay();
-    toast('Please sign in first to subscribe');
-    return;
-  }
-  document.getElementById('payment-modal').classList.add('show');
   document.getElementById('account-menu').classList.remove('show');
+  toast('Paid plans are removed in this local build.');
 }
 
-function closePaymentModal(){
-  document.getElementById('payment-modal').classList.remove('show');
-}
+function closePaymentModal(){}
 
 // ═══ Stripe Checkout ═══
 async function startCheckout(plan){
+  toast('Checkout is disabled in this local build.');
+  return;
+}
+
+async function __unused_startCheckout(plan){
   if(!plan) plan = 'pro';
 
   // Enterprise is custom — open enquiry instead of checkout
@@ -11958,6 +11861,11 @@ async function submitEnterpriseEnquiry(e){
 
 // ═══ Billing Portal ═══
 async function openBillingPortal(){
+  toast('Billing is disabled in this local build.');
+  return;
+}
+
+async function __unused_openBillingPortal(){
   if(!currentUser){
     toast('Please sign in first');
     return;
@@ -12678,7 +12586,7 @@ function showActivityLogOverlay(entries){
     <div class="modal-card" style="max-width:850px">
       <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">X</button>
       <h2 style="color:var(--primary);margin-bottom:4px">Activity Log</h2>
-      <p style="color:var(--text2);font-size:12px;margin-bottom:12px">Track who made changes to shared projects</p>
+      <p style="color:var(--text2);font-size:12px;margin-bottom:12px">Shared-project activity is not included in this local build.</p>
       <div style="max-height:450px;overflow-y:auto">
         <table class="result-table" style="width:100%">
           <thead><tr><th style="width:130px">Time</th><th style="width:80px">User</th><th style="width:100px">Action</th><th>Details</th><th>Changes</th></tr></thead>
@@ -14952,7 +14860,7 @@ function updateIfcAiAssistUI(){
   if(hint){
     hint.textContent = allowed
       ? 'When enabled, meshes that are low-confidence or disagree with analytic labels are sent for AI review (selective; building footprint included). Pro subscription required.'
-      : 'Cloud AI refinement requires Pro or higher — upgrade to enable.';
+: 'Cloud AI refinement is optional in this local build.';
   }
 }
 
@@ -14962,7 +14870,7 @@ function onIfcAiAssistChange(){
     if(el) el.checked = false;
     S.ifcAiAssist = false;
     try{ sessionStorage.setItem(IFC_AI_SESSION_STORAGE, '0'); }catch(e){}
-    toast('Cloud AI requires Pro — upgrade to unlock.');
+    toast('Cloud AI refinement endpoint is optional in this local build.');
     return;
   }
   S.ifcAiAssist = !!(el && el.checked);

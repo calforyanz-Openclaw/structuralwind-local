@@ -17,8 +17,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <!-- Stripe.js -->
-    <script src="https://js.stripe.com/v3/"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -37,7 +35,6 @@
             <button class="main-tab" id="mtab-about" onclick="switchMainTab('about')">ABOUT</button>
         </div>
         <div class="nav-right">
-            <button class="btn-upgrade" id="btn-upgrade" onclick="openPaymentModal()" style="display:none">⚡ Upgrade</button>
             <button class="btn-account" id="btn-account" onclick="toggleAccountMenu()">👤</button>
         </div>
     </nav>
@@ -55,12 +52,6 @@
         <button id="btn-signin-menu" onclick="showAuthOverlay()" style="display:none">🔑 Sign In</button>
         <button id="btn-dashboard-menu" onclick="window.location.href='dashboard.html'" style="display:none">📊 Dashboard</button>
         <button id="btn-saved-projects" onclick="openSavedProjects()" style="display:none">📂 My Projects</button>
-        <button id="btn-shared-projects" onclick="openSharedProjects()" style="display:none">🔗 Shared Projects</button>
-        <button id="btn-share-project-menu" onclick="shareCurrentProject()" title="Share with team (Team/Enterprise)" style="display:none">🔗 Share Project</button>
-        <button id="btn-activity-log" onclick="openActivityLog()" style="display:none">📝 Activity Log</button>
-        <button id="btn-api-keys" onclick="openApiKeys()" style="display:none">🔐 API Keys</button>
-        <button id="btn-templates" onclick="openTemplates()" style="display:none">📋 Templates</button>
-        <button id="btn-manage-billing" onclick="openBillingPortal()" style="display:none">💳 Manage Billing</button>
         <button onclick="exportAllProjects()">📁 Export Projects</button>
         <button onclick="window.location.href='about.html'">ℹ️ About</button>
         <button id="btn-signout-menu" onclick="signOutUser()" style="display:none">🚪 Sign Out</button>
@@ -70,7 +61,7 @@
     <div class="auth-overlay" id="auth-overlay">
         <div class="auth-card">
             <h2>💨 Welcome to StructuralWind</h2>
-            <p>Sign in to save your calculations and access Pro features</p>
+            <p>Sign in to save your calculations and sync your workspace</p>
             <button type="button" class="btn-google" onclick="signInWithGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="18" height="18" aria-hidden="true">
                 Sign in with Google
@@ -105,77 +96,7 @@
     </div>
     <div id="pressure-hover-tip" class="pressure-hover-tip" hidden role="tooltip" aria-hidden="true"></div>
 
-    <!-- ═══ Payment Modal ═══ -->
-    <div class="modal-overlay" id="payment-modal">
-        <div class="modal-card" style="max-width:960px">
-            <button class="modal-close" onclick="closePaymentModal()">✕</button>
-            <h2 style="color:var(--primary);text-align:center;margin-bottom:4px">⚡ Choose Your Plan</h2>
-            <p style="text-align:center;color:var(--text2);font-size:13px;margin-bottom:16px">Start with a 1-month free trial on paid plans, then unlock unlimited calculations, PDF exports, shared projects & more</p>
-            <div class="plans-grid plans-grid-4">
-                <!-- FREE -->
-                <div class="plan-card">
-                    <div class="plan-name">Free</div>
-                    <div class="plan-price">$0<span>/month</span></div>
-                    <div class="plan-members">1 user</div>
-                    <ul class="plan-features">
-                        <li class="included">✅ 3 projects</li>
-                        <li class="included">✅ Basic wind analysis</li>
-                        <li class="excluded">❌ PDF export</li>
-                        <li class="excluded">❌ Save calculations</li>
-                        <li class="excluded">❌ Shared projects</li>
-                    </ul>
-                    <button class="plan-btn current" id="plan-btn-free">Current Plan</button>
-                </div>
-                <!-- PRO -->
-                <div class="plan-card featured">
-                    <div class="plan-popular">MOST POPULAR</div>
-                    <div class="plan-name">Pro</div>
-                    <div class="plan-price">$10<span> NZD/month</span></div>
-                    <div class="plan-members">1 user</div>
-                    <ul class="plan-features">
-                        <li class="included">✅ 1-month free trial</li>
-                        <li class="included">✅ Unlimited calculations</li>
-                        <li class="included">✅ Full AS/NZS 1170.2</li>
-                        <li class="included">✅ Full IFC model analysis features</li>
-                        <li class="included">✅ PDF export</li>
-                        <li class="included">✅ Save & load projects</li>
-                        <li class="excluded">❌ Shared projects</li>
-                    </ul>
-                    <button class="plan-btn" id="plan-btn-pro" onclick="startCheckout('pro')">Subscribe Now</button>
-                </div>
-                <!-- TEAM -->
-                <div class="plan-card">
-                    <div class="plan-name">Team</div>
-                    <div class="plan-price">$30<span> NZD/month</span></div>
-                    <div class="plan-members">Up to 5 users</div>
-                    <ul class="plan-features">
-                        <li class="included">✅ 1-month free trial</li>
-                        <li class="included">✅ Everything in Pro</li>
-                        <li class="included">✅ Shared team projects</li>
-                        <li class="included">✅ See who made changes</li>
-                        <li class="included">✅ Activity log</li>
-                        <li class="included">✅ API access (30/mo)</li>
-                        <li class="included">✅ Priority support</li>
-                    </ul>
-                    <button class="plan-btn" id="plan-btn-team" onclick="startCheckout('team')">Subscribe Now</button>
-                </div>
-                <!-- ENTERPRISE -->
-                <div class="plan-card">
-                    <div class="plan-name">Enterprise</div>
-                    <div class="plan-price" style="font-size:28px">Custom</div>
-                    <div class="plan-members">Unlimited users</div>
-                    <ul class="plan-features">
-                        <li class="included">✅ Everything in Team</li>
-                        <li class="included">✅ SSO / SAML</li>
-                        <li class="included">✅ Custom branding & templates</li>
-                        <li class="included">✅ Batch API (5,000+/mo)</li>
-                        <li class="included">✅ Dedicated support & SLA</li>
-                    </ul>
-                    <button class="plan-btn" id="plan-btn-enterprise" onclick="startCheckout('enterprise')">Contact Us</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Local build: paid plan modal removed -->
 
     <!-- ═══════════════════════════════════════════
          BUILDING TAB CONTENT
@@ -444,7 +365,6 @@
                     <button onclick="exportExcel()">📊 Export Excel</button>
                     <button onclick="exportAllProjects()">📁 Export JSON</button>
                     <button onclick="printReport()">🖨️ Print</button>
-                    <button onclick="shareCurrentProject()" title="Share with team (Team/Enterprise)">🔗 Share Project</button>
                 </div>
                 <div class="doc-preview" id="doc-preview">
                     <!-- High-level summary rendered here -->
@@ -621,7 +541,6 @@
                     <h2>About Us</h2>
                     <p>StructuralWind is a professional wind load analysis tool built for structural engineers, building designers, and construction professionals across New Zealand and Australia.</p>
                     <p>Our mission is to make AS/NZS 1170.2:2021 wind load calculations <strong>fast, accurate, and accessible</strong> — reducing the time spent on manual calculations so engineers can focus on design.</p>
-                    <p class="trial-callout"><strong>🎁 New users can start with a 1-month free trial</strong> on paid plans to evaluate advanced analysis, reporting, and collaboration features.</p>
                     <div class="about-video-wrap">
                         <h3>Product Video</h3>
                         <video class="about-video" controls preload="metadata">
@@ -670,11 +589,6 @@
                         <div class="about-card-icon">🗺️</div>
                         <h3>Local Pressure Zones</h3>
                         <p>Render roof and wall local pressure zones visually and align them with tabulated local pressure outputs.</p>
-                    </div>
-                    <div class="about-card">
-                        <div class="about-card-icon">👥</div>
-                        <h3>Team Collaboration</h3>
-                        <p>Share projects with your team, track who changed what, and keep wind analysis workflows aligned across multiple engineers.</p>
                     </div>
                 </div>
                 <div class="about-section">
