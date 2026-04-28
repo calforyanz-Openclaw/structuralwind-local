@@ -247,8 +247,20 @@ async function handleStatic(req, res, url) {
   }
 
   try {
-    const st = await stat(safePath);
-    const finalPath = st.isDirectory() ? path.join(safePath, 'index.html') : safePath;
+    let candidatePath = safePath;
+    try {
+      await stat(candidatePath);
+    } catch {
+      const publicCandidate = path.normalize(path.join(publicDir, pathname.replace(/^\//, '')));
+      if (publicCandidate.startsWith(publicDir) && existsSync(publicCandidate)) {
+        candidatePath = publicCandidate;
+      } else {
+        throw new Error('not_found');
+      }
+    }
+
+    const st = await stat(candidatePath);
+    const finalPath = st.isDirectory() ? path.join(candidatePath, 'index.html') : candidatePath;
     const ext = path.extname(finalPath).toLowerCase();
     res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
     createReadStream(finalPath).pipe(res);

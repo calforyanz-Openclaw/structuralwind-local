@@ -1,0 +1,288 @@
+{
+  "geometry": {
+    "width": 20,
+    "depth": 15,
+    "height": 6,
+    "pitch": 15,
+    "roofType": "gable",
+    "parapet": 0,
+    "overhang": 0.5,
+    "windSpeed": 45,
+    "svcVr": 32,
+    "terrainCat": 3,
+    "importance": 2,
+    "life": 50,
+    "loadCase": "A",
+    "windAngle": 315,
+    "mapBuildingAngle": 0,
+    "openWW": 5,
+    "openLW": 5,
+    "openSW": 5,
+    "Kp": "1.0"
+  },
+  "sites": [
+    {
+      "name": "Auckland CBD",
+      "lat": -36.8485,
+      "lng": 174.7633
+    },
+    {
+      "name": "Wellington CBD",
+      "lat": -41.2865,
+      "lng": 174.7762
+    },
+    {
+      "name": "Christchurch CBD",
+      "lat": -43.5321,
+      "lng": 172.6362
+    }
+  ],
+  "raw": {
+    "live": [
+      {
+        "site": "Auckland CBD",
+        "region": "NZ1",
+        "terrainDataSource": "live",
+        "detectedSiteElev": 36,
+        "tcDir": [
+          3.9,
+          3.93,
+          3.93,
+          3.58,
+          3.96,
+          3.96,
+          3.96,
+          3.93
+        ],
+        "result": {
+          "Vsit": 28.325536109999998,
+          "qz": 0.4814015975513483,
+          "Mz": 0.7555999999999999,
+          "Ms": 0.74,
+          "Mt": 1.185,
+          "Md": 0.95,
+          "tc": 3,
+          "windward_p": 0.4510550293174532,
+          "leeward_p": 0.017793591521239743,
+          "roof_ww_p": -0.14406847904735706,
+          "roof_lw_p": -0.06885869603800296
+        }
+      },
+      {
+        "site": "Wellington CBD",
+        "region": "NZ2",
+        "terrainDataSource": "live",
+        "detectedSiteElev": 9,
+        "tcDir": [
+          3.87,
+          3.53,
+          2.65,
+          3.36,
+          3.96,
+          3.96,
+          3.76,
+          3.96
+        ],
+        "result": {
+          "Vsit": 25.857563129999996,
+          "qz": 0.4630330752913347,
+          "Mz": 0.7532,
+          "Ms": 0.71,
+          "Mt": 1.0745,
+          "Md": 1,
+          "tc": 3,
+          "windward_p": 0.433844420984096,
+          "leeward_p": 0.01711465322189476,
+          "roof_ww_p": -0.13857135340878785,
+          "roof_lw_p": -0.0662313003305455
+        }
+      },
+      {
+        "site": "Christchurch CBD",
+        "region": "NZ3",
+        "terrainDataSource": "live",
+        "detectedSiteElev": 10.9,
+        "tcDir": [
+          3.38,
+          3.75,
+          3.75,
+          3.96,
+          3.96,
+          3.96,
+          3.71,
+          3.75
+        ],
+        "result": {
+          "Vsit": 29.708170030000005,
+          "qz": 1.1713427710983453,
+          "Mz": 0.77,
+          "Ms": 0.71,
+          "Mt": 1.0253,
+          "Md": 1,
+          "tc": 3,
+          "windward_p": 1.0975037279600968,
+          "leeward_p": 0.04329523397158619,
+          "roof_ww_p": -0.3505463470283875,
+          "roof_lw_p": -0.16754646482611601
+        }
+      }
+    ],
+    "local": [
+      {
+        "site": "Auckland CBD",
+        "region": "NZ1",
+        "terrainDataSource": "unknown",
+        "detectedSiteElev": null,
+        "tcDir": [
+          3.9,
+          3.93,
+          3.93,
+          3.58,
+          3.96,
+          3.96,
+          3.96,
+          3.93
+        ],
+        "result": {
+          "Vsit": 27.665802104399997,
+          "qz": 0.459237963647894,
+          "Mz": 0.7555999999999999,
+          "Ms": 0.74,
+          "Mt": 1.1574,
+          "Md": 0.95,
+          "tc": 3,
+          "windward_p": 0.43028854538604594,
+          "leeward_p": 0.01697437810294132,
+          "roof_ww_p": -0.1374355948964221,
+          "roof_lw_p": -0.06568845535367959
+        }
+      },
+      {
+        "site": "Wellington CBD",
+        "region": "NZ2",
+        "terrainDataSource": "live",
+        "detectedSiteElev": 9,
+        "tcDir": [
+          3.87,
+          3.33,
+          2.65,
+          3.18,
+          3.96,
+          3.96,
+          3.27,
+          3.93
+        ],
+        "result": {
+          "Vsit": 25.939955789999996,
+          "qz": 0.511429850891138,
+          "Mz": 0.7555999999999999,
+          "Ms": 0.71,
+          "Mt": 1.0745,
+          "Md": 1,
+          "tc": 3,
+          "windward_p": 0.47919036322457853,
+          "leeward_p": 0.018903497422554344,
+          "roof_ww_p": -0.15305499842975437,
+          "roof_lw_p": -0.07315387573785048
+        }
+      },
+      {
+        "site": "Christchurch CBD",
+        "region": "NZ3",
+        "terrainDataSource": "live",
+        "detectedSiteElev": 10.9,
+        "tcDir": [
+          2.94,
+          3.75,
+          3.75,
+          3.96,
+          3.96,
+          3.96,
+          3.71,
+          3.75
+        ],
+        "result": {
+          "Vsit": 29.708170030000005,
+          "qz": 1.284111862110643,
+          "Mz": 0.77,
+          "Ms": 0.71,
+          "Mt": 1.0253,
+          "Md": 1,
+          "tc": 3,
+          "windward_p": 1.2031640870269964,
+          "leeward_p": 0.0474634111274177,
+          "roof_ww_p": -0.38429461772032636,
+          "roof_lw_p": -0.18367672405249813
+        }
+      }
+    ]
+  },
+  "summary": [
+    {
+      "site": "Auckland CBD",
+      "region": "NZ1/NZ1",
+      "source": "live/unknown",
+      "elev": "36/null",
+      "tcDirHead": "[3.9,3.93,3.93] / [3.9,3.93,3.93]",
+      "liveVsit": 28.325536109999998,
+      "localVsit": 27.665802104399997,
+      "vsitDiff": 0.6597340056,
+      "vsitPct": -2.329,
+      "liveMt": 1.185,
+      "localMt": 1.1574,
+      "mtDiff": 0.0276,
+      "liveMs": 0.74,
+      "localMs": 0.74,
+      "msDiff": 0,
+      "liveQz": 0.4814015975513483,
+      "localQz": 0.459237963647894,
+      "qzDiff": 0.022163633903,
+      "roofWWDiff": -0.006632884151,
+      "windwardDiff": 0.020766483931
+    },
+    {
+      "site": "Wellington CBD",
+      "region": "NZ2/NZ2",
+      "source": "live/live",
+      "elev": "9/9",
+      "tcDirHead": "[3.87,3.53,2.65] / [3.87,3.33,2.65]",
+      "liveVsit": 25.857563129999996,
+      "localVsit": 25.939955789999996,
+      "vsitDiff": -0.08239266,
+      "vsitPct": 0.319,
+      "liveMt": 1.0745,
+      "localMt": 1.0745,
+      "mtDiff": 0,
+      "liveMs": 0.71,
+      "localMs": 0.71,
+      "msDiff": 0,
+      "liveQz": 0.4630330752913347,
+      "localQz": 0.511429850891138,
+      "qzDiff": -0.0483967756,
+      "roofWWDiff": 0.014483645021,
+      "windwardDiff": -0.04534594224
+    },
+    {
+      "site": "Christchurch CBD",
+      "region": "NZ3/NZ3",
+      "source": "live/live",
+      "elev": "10.9/10.9",
+      "tcDirHead": "[3.38,3.75,3.75] / [2.94,3.75,3.75]",
+      "liveVsit": 29.708170030000005,
+      "localVsit": 29.708170030000005,
+      "vsitDiff": 0,
+      "vsitPct": 0,
+      "liveMt": 1.0253,
+      "localMt": 1.0253,
+      "mtDiff": 0,
+      "liveMs": 0.71,
+      "localMs": 0.71,
+      "msDiff": 0,
+      "liveQz": 1.1713427710983453,
+      "localQz": 1.284111862110643,
+      "qzDiff": -0.112769091012,
+      "roofWWDiff": 0.033748270692,
+      "windwardDiff": -0.105660359067
+    }
+  ]
+}

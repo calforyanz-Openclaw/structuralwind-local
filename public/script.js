@@ -1,20 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════
-   StructuralWind — Professional Wind Analysis  
+   Wind Analysis Tool
    AS/NZS 1170.2:2021 compliant calculations
    With Firebase Auth + Local-First Workspace
    ═══════════════════════════════════════════════════════════════════ */
 
-// ═════════════ FIREBASE CONFIG ═════════════
-const firebaseConfig = {
-  apiKey: "AIzaSyBLiSEfmwQ-_DaCjInhuK3MSw9knlZ9UbU",
-  authDomain: "structuralwind.firebaseapp.com",
-  projectId: "structuralwind",
-  storageBucket: "structuralwind.firebasestorage.app",
-  messagingSenderId: "183138251631",
-  appId: "1:183138251631:web:8ea6307d32c85001df6e9a",
-  measurementId: "G-GVYMW4CHK9"
-};
-
+// ═════════════ LOCAL WORKSPACE MODE ═════════════
 let firebaseApp, firebaseAuth, firestore, googleProvider, microsoftProvider;
 let currentUser = null;
 /** Prefer this for gating and Bearer tokens: `currentUser` is only set in onAuthStateChanged, which can lag behind firebaseAuth.currentUser right after load. */
@@ -26,28 +16,7 @@ function getActiveFirebaseUser(){
 
 /** Resolves when Firebase Auth has finished restoring the session from persistence. */
 function ensureFirebaseAuthReady(){
-  if(typeof firebaseAuth === 'undefined' || !firebaseAuth) return Promise.resolve();
-  if(typeof firebaseAuth.authStateReady === 'function'){
-    return Promise.race([
-      firebaseAuth.authStateReady().catch(function(){}),
-      new Promise(function(r){ setTimeout(r, 8000); })
-    ]);
-  }
-  return new Promise(function(resolve){
-    var done = false;
-    var t = setTimeout(function(){
-      if(done) return;
-      done = true;
-      resolve();
-    }, 4000);
-    var unsub = firebaseAuth.onAuthStateChanged(function(){
-      clearTimeout(t);
-      if(done) return;
-      done = true;
-      try{ if(typeof unsub === 'function') unsub(); }catch(e){}
-      resolve();
-    });
-  });
+  return Promise.resolve();
 }
 
 function updateIfcUploadSigninHint(){
@@ -168,14 +137,7 @@ function deactivateMapOverlaysIfFreeTierExceeded(){
   }
 }
 
-// Initialize Firebase
-if (typeof firebase !== 'undefined') {
-  firebaseApp = firebase.initializeApp(firebaseConfig);
-  firebaseAuth = firebase.auth();
-  firestore = firebase.firestore();
-  googleProvider = new firebase.auth.GoogleAuthProvider();
-  microsoftProvider = new firebase.auth.OAuthProvider('microsoft.com');
-}
+// Local build: Firebase removed.
 
 // ═════════════ STATE ═════════════
 const S = {
@@ -473,7 +435,7 @@ async function fetchOverpassElementsForSite({ query, runGen, ac, lat, lng }){
           const data = await resp.json().catch(()=>null);
           if(data && Array.isArray(data.elements)){
             if(data.linz){
-              console.info('StructuralWind: LINZ hybrid status', data.linz);
+              console.info('Wind Analysis: LINZ hybrid status', data.linz);
             }
             return {
               elements: data.elements,
@@ -485,14 +447,14 @@ async function fetchOverpassElementsForSite({ query, runGen, ac, lat, lng }){
             };
           }
         } else {
-          console.warn('StructuralWind: /api/buildings-hybrid HTTP', resp.status, '— falling back to Overpass');
+          console.warn('Wind Analysis: /api/buildings-hybrid HTTP', resp.status, '— falling back to Overpass');
         }
       } catch(e){
         clearTimeout(timeoutId);
         ac.signal.removeEventListener('abort', onParentAbort);
         if(runGen !== siteDetectGeneration) return { elements: null, cancelled: true };
         if(ac.signal.aborted) return { elements: null, cancelled: true };
-        console.warn('StructuralWind: hybrid buildings fetch failed — falling back to Overpass', hybridUrl, e && e.message);
+        console.warn('Wind Analysis: hybrid buildings fetch failed — falling back to Overpass', hybridUrl, e && e.message);
       }
     }
   }
@@ -698,12 +660,12 @@ function onVolKvChange(){
 // ═════════════ INIT ═════════════
 (function init(){
   if(typeof THREE === 'undefined'){
-    console.error('StructuralWind: THREE.js did not load — check CDN / network.');
+    console.error('Wind Analysis: THREE.js did not load — check CDN / network.');
     return;
   }
   const box = document.getElementById('canvas-container');
   if(!box){
-    console.error('StructuralWind: #canvas-container not found.');
+    console.error('Wind Analysis: #canvas-container not found.');
     return;
   }
   scene = new THREE.Scene();
@@ -787,8 +749,8 @@ function onVolKvChange(){
   try{
     onInput();
   } catch(err){
-    console.error('StructuralWind: onInput failed during init —', err);
-    try{ calc(); rebuild(); } catch(e2){ console.error('StructuralWind: fallback calc failed', e2); }
+    console.error('Wind Analysis: onInput failed during init —', err);
+    try{ calc(); rebuild(); } catch(e2){ console.error('Wind Analysis: fallback calc failed', e2); }
   }
   animate();
 
@@ -809,9 +771,9 @@ function onVolKvChange(){
       if(detectedRegion){ applyRegion(detectedRegion); onInput(); }
       checkLeeZone();
       // Same TC/Ms/Mt fetch as overlay buttons — start as soon as the app is up so terrain data is ready on first interaction
-      setTimeout(function(){ try{ scheduleInitialTerrainAutoDetectFromLoad(); }catch(e){ console.error('StructuralWind: initial terrain detect —', e); } }, 0);
+      setTimeout(function(){ try{ scheduleInitialTerrainAutoDetectFromLoad(); }catch(e){ console.error('Wind Analysis: initial terrain detect —', e); } }, 0);
     } catch(err){
-      console.error('StructuralWind: map / region init failed —', err);
+      console.error('Wind Analysis: map / region init failed —', err);
     }
   });
 
@@ -1752,7 +1714,7 @@ function bindMapContainerClickToMoveSitePin(){
 
 function initMap(){
   if(typeof L === 'undefined'){
-    console.warn('StructuralWind: Leaflet (L) not loaded — map disabled.');
+    console.warn('Wind Analysis: Leaflet (L) not loaded — map disabled.');
     return;
   }
   const mapEl = document.getElementById('leaflet-map');
@@ -1851,7 +1813,7 @@ function updateMapBuilding(){
   mapMarker._isCW = true;
   mapMarker.bindPopup(`
     <div style="font-family:Segoe UI,sans-serif;font-size:12px;line-height:1.6">
-      <b style="color:#1e40af">StructuralWind — Building Site</b><br>
+      <b style="color:#1e40af">Building Site</b><br>
       📐 ${S.width}m × ${S.depth}m × ${S.height}m<br>
       🏠 ${S.roofType} roof @ ${S.pitch}°<br>
       🌪️ V<sub>R</sub> = ${S.windSpeed} m/s | Region ${S.region}<br>
@@ -6866,7 +6828,7 @@ function dirPolarSectorClick(i){
   const tab = S.activeDirTab;
   if(isTerrainPolarTab(tab)){
     if(!currentUser){
-      toast('Sign in to edit terrain multipliers');
+      toast('Terrain multipliers are locked in this local build for now.');
       showAuthOverlay();
       return;
     }
@@ -7090,7 +7052,7 @@ function renderDirTable(){
     notes += '<div class="dir-polar-hint">Read-only; use other tabs to edit inputs.</div>';
   }
   if(isTerrainPolarTab(tab) && terrainPolarBlocked){
-    if(!currentUser) notes += '<div class="dir-polar-note">Sign in to edit terrain multipliers.</div>';
+    if(!currentUser) notes += '<div class="dir-polar-note">Terrain multipliers are read-only in this local build for now.</div>';
     else notes += '<div class="dir-polar-note">Unlimited terrain multiplier edits are enabled in this local build.</div>';
   }
 
@@ -7985,7 +7947,7 @@ async function autoDetectAllMultipliers(opts){
       clearStaleOsmTerrainCache();
       let msg = '⚠ Map data unavailable — TC/Ms set to conservative defaults.';
       if(detail === 'unauthorized'){
-        msg = '⚠ Sign in required for map data — TC/Ms set to conservative defaults.';
+        msg = '⚠ Local map data route did not authorize or respond — TC/Ms set to conservative defaults.';
       } else if(detail === 'timeout'){
         msg = '⚠ Map data did not finish in time — TC/Ms set to conservative defaults. Run Detect again or use a backend Overpass proxy for production.';
       } else if(String(detail).indexOf('http_429') === 0 || String(detail).indexOf('http_503') === 0){
@@ -9599,7 +9561,7 @@ async function updateDocPreview(){
   </style>
   <div class="rpt">
   <h1>WIND LOAD ANALYSIS — DETAILED REPORT</h1>
-  <p style="color:#666;font-size:12px">AS/NZS 1170.2:2021 | StructuralWind<br>
+  <p style="color:#666;font-size:12px">AS/NZS 1170.2:2021<br>
   Generated: ${new Date().toLocaleString()}</p>
 
   <h2>Project Overview</h2>
@@ -9924,7 +9886,7 @@ function fitOrbitControlsToModelExtent(extentM){
 function takeScreenshot(){
   renderer.render(scene,camera);
   const a=document.createElement('a');
-  a.download='structuralwind-'+Date.now()+'.png';
+  a.download='wind-analysis-'+Date.now()+'.png';
   a.href=renderer.domElement.toDataURL('image/png');a.click();
   toast('Screenshot saved!');
 }
@@ -9946,7 +9908,7 @@ function exportExcel(){
 
   // Sheet 1: Wind Pressures
   html+='<table border="1" cellpadding="4" cellspacing="0">';
-  html+=`<tr><td colspan="8" style="background:#1a2a4c;color:#fff;font-size:16px;font-weight:bold;padding:10px;text-align:center;">StructuralWind — Face Pressures (AS/NZS 1170.2:2021)</td></tr>`;
+  html+=`<tr><td colspan="8" style="background:#1a2a4c;color:#fff;font-size:16px;font-weight:bold;padding:10px;text-align:center;">Face Pressures (AS/NZS 1170.2:2021)</td></tr>`;
   html+=`<tr><td ${hStyle}>Face</td><td ${hStyle}>Cp,e</td><td ${hStyle}>Cp,i</td><td ${hStyle}>qz (kPa)</td><td ${hStyle}>p (kPa)</td><td ${hStyle}>Area (m²)</td><td ${hStyle}>Force (kN)</td><td ${hStyle}>Clause</td></tr>`;
   for(let k in R.faces){
     const f=R.faces[k];
@@ -9991,7 +9953,7 @@ function exportExcel(){
 
   html+='</body></html>';
   const blob=new Blob([html],{type:'application/vnd.ms-excel'});
-  const a=document.createElement('a');a.download='structuralwind-'+Date.now()+'.xls';a.href=URL.createObjectURL(blob);a.click();
+  const a=document.createElement('a');a.download='wind-analysis-'+Date.now()+'.xls';a.href=URL.createObjectURL(blob);a.click();
   toast('Excel file exported!');
 }
 
@@ -10315,7 +10277,7 @@ async function generatePDF(options = {}){
     doc.rect(0,0,PW,12,'F');
     doc.setFontSize(7);doc.setTextColor(255,255,255);
     doc.text('WIND LOAD ANALYSIS -- AS/NZS 1170.2:2021',ML,8);
-    doc.text('StructuralWind',PW-MR-30,8);
+    doc.text('Wind Analysis',PW-MR-30,8);
     // Footer
     doc.setFillColor(240,240,240);
     doc.rect(0,PH-15,PW,15,'F');
@@ -10510,7 +10472,7 @@ async function generatePDF(options = {}){
 
   // Disclaimer at bottom
   doc.setFontSize(7);doc.setTextColor(...COL_MUTED);
-  doc.text('This report was generated by StructuralWind software. All calculations are in accordance with',ML,PH-35);
+  doc.text('This report was generated by this software. All calculations are in accordance with',ML,PH-35);
   doc.text('AS/NZS 1170.2:2021. The engineer of record must verify all inputs, assumptions and results.',ML,PH-30);
   doc.text('Report Date: '+new Date().toLocaleDateString()+' | '+new Date().toLocaleTimeString(),ML,PH-22);
 
@@ -11420,7 +11382,7 @@ async function generatePDF(options = {}){
   doc.setFontSize(8);doc.setTextColor(...COL_MUTED);
   doc.text('END OF REPORT',PW/2-12,y);
   y+=5;
-  doc.text('Software: StructuralWind | Standard: AS/NZS 1170.2:2021',ML,y);
+  doc.text('Standard: AS/NZS 1170.2:2021',ML,y);
   y+=4;
   doc.text('Report generated: '+new Date().toISOString(),ML,y);
 
@@ -11465,7 +11427,7 @@ async function generatePDF(options = {}){
     return doc.output('blob');
   }
   if(saveFile){
-    doc.save('StructuralWind_Report_'+S.region+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+    doc.save('Wind_Report_'+S.region+'_'+new Date().toISOString().slice(0,10)+'.pdf');
     if(!silent) toast('Detailed PDF report exported — '+pg+' pages!');
   }
   return doc;
@@ -11484,7 +11446,7 @@ function exportAllProjects(){
     results:S.R
   }, null, 2);
   const blob = new Blob([data],{type:'application/json'});
-  const a = document.createElement('a');a.download='structuralwind-project.json';
+  const a = document.createElement('a');a.download='wind-project.json';
   a.href=URL.createObjectURL(blob); a.click();
   toast('Project exported as JSON');
 }
@@ -11493,7 +11455,7 @@ function printReport(){
   updateDocPreview();
   const content = document.getElementById('doc-preview').innerHTML;
   const win = window.open('','','width=900,height=700');
-  win.document.write(`<html><head><title>StructuralWind Report</title>
+  win.document.write(`<html><head><title>Wind Report</title>
     <style>body{font-family:Segoe UI,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;margin:8px 0}
     th,td{border:1px solid #ddd;padding:6px 8px;font-size:11px}th{background:#f0f4f8;font-weight:700}
     h2{color:#1a5276;border-bottom:2px solid #1a5276;padding-bottom:4px}</style></head>
@@ -11558,51 +11520,21 @@ setTimeout(()=>{
 // ═══════════════════════════════════════════════════════════════════
 
 function initAuthListener(){
-  if(!firebaseAuth) return;
+  currentUser = null;
+  S.user.signedIn = false;
+  S.user.name = 'Local Workspace';
+  S.user.plan = 'local';
+  userSubscription = { active: true, plan: 'local', teamInvitee: false };
 
-  if(firebaseAuth.currentUser) currentUser = firebaseAuth.currentUser;
-
-  firebaseAuth.onAuthStateChanged(async (user) => {
-    currentUser = user;
-
-    if(user){
-      // User is signed in
-      S.user.signedIn = true;
-      S.user.name = user.displayName || user.email || 'User';
-
-      // Update UI
-      document.getElementById('acct-name').textContent = S.user.name;
-      document.getElementById('btn-signin-menu').style.display = 'none';
-      document.getElementById('btn-signout-menu').style.display = 'block';
-      document.getElementById('btn-dashboard-menu').style.display = 'block';
-
-      // Check subscription status
-      await checkSubscriptionStatus();
-
-      // Close auth overlay if open
-      closeAuthOverlay();
-      try{ refreshDirectionalWindUI(); }catch(e){}
-      try{ updateIfcUploadSigninHint(); }catch(e){}
-
-    } else {
-      // User is signed out
-      currentUser = null;
-      S.user.signedIn = false;
-      S.user.name = 'Guest User';
-      S.user.plan = 'local';
-      userSubscription = { active: true, plan: 'local', teamInvitee: false };
-
-      // Update UI
-      document.getElementById('acct-name').textContent = 'Guest User';
-      document.getElementById('acct-plan').textContent = 'Free Plan';
-      document.getElementById('btn-signin-menu').style.display = 'block';
-      document.getElementById('btn-signout-menu').style.display = 'none';
-      document.getElementById('btn-dashboard-menu').style.display = 'none';
-      updatePlanUI();
-      try{ refreshDirectionalWindUI(); }catch(e){}
-      try{ updateIfcUploadSigninHint(); }catch(e){}
-    }
-  });
+  document.getElementById('acct-name').textContent = 'Local Workspace';
+  document.getElementById('acct-plan').textContent = 'Local Workspace';
+  document.getElementById('btn-signin-menu').style.display = 'none';
+  document.getElementById('btn-signout-menu').style.display = 'none';
+  document.getElementById('btn-dashboard-menu').style.display = 'none';
+  updatePlanUI();
+  closeAuthOverlay();
+  try{ refreshDirectionalWindUI(); }catch(e){}
+  try{ updateIfcUploadSigninHint(); }catch(e){}
 }
 
 async function checkSubscriptionStatus(){
@@ -11632,7 +11564,6 @@ function updatePlanUI(){
 // ═══ Auth Overlay ═══
 function showAuthOverlay(){
   document.getElementById('auth-overlay').classList.add('show');
-  // Close account menu
   document.getElementById('account-menu').classList.remove('show');
 }
 
@@ -11642,60 +11573,18 @@ function closeAuthOverlay(){
 
 // ═══ Google Sign In ═══
 async function signInWithGoogle(){
-  if(!firebaseAuth || !googleProvider){
-    toast('Firebase not loaded. Please refresh the page.');
-    return;
-  }
-
-  try {
-    const result = await firebaseAuth.signInWithPopup(googleProvider);
-    toast('Welcome, ' + (result.user.displayName || result.user.email) + '!');
-  } catch(err){
-    console.error('Sign in error:', err);
-    if(err.code === 'auth/popup-closed-by-user'){
-      toast('Sign in cancelled');
-    } else if(err.code === 'auth/unauthorized-domain'){
-      toast('This domain is not authorized. Add it in Firebase Console > Authentication > Settings.');
-    } else {
-      toast('Sign in failed: ' + err.message);
-    }
-  }
+  showAuthOverlay();
 }
 
 // ═══ Microsoft Sign In ═══
 async function signInWithMicrosoft(){
-  if(!firebaseAuth || !microsoftProvider){
-    toast('Firebase not loaded. Please refresh the page.');
-    return;
-  }
-
-  try {
-    const result = await firebaseAuth.signInWithPopup(microsoftProvider);
-    toast('Welcome, ' + (result.user.displayName || result.user.email) + '!');
-  } catch(err){
-    console.error('Sign in error:', err);
-    if(err.code === 'auth/popup-closed-by-user'){
-      toast('Sign in cancelled');
-    } else if(err.code === 'auth/unauthorized-domain'){
-      toast('This domain is not authorized. Add it in Firebase Console > Authentication > Settings.');
-    } else {
-      toast('Sign in failed: ' + err.message);
-    }
-  }
+  showAuthOverlay();
 }
 
 // ═══ Sign Out ═══
 async function signOutUser(){
-  if(!firebaseAuth) return;
-
-  try {
-    await firebaseAuth.signOut();
-    toast('Signed out successfully');
-    document.getElementById('account-menu').classList.remove('show');
-  } catch(err){
-    console.error('Sign out error:', err);
-    toast('Sign out failed');
-  }
+  document.getElementById('account-menu').classList.remove('show');
+  toast('This local build does not use cloud sign-in.');
 }
 
 // ═══ Payment Modal ═══
@@ -11713,150 +11602,16 @@ async function startCheckout(plan){
 }
 
 async function __unused_startCheckout(plan){
-  if(!plan) plan = 'pro';
-
-  // Enterprise is custom — open enquiry instead of checkout
-  if(plan === 'enterprise'){
-    openEnterpriseEnquiry();
-    return;
-  }
-
-  if(!currentUser){
-    showAuthOverlay();
-    toast('Please sign in first');
-    return;
-  }
-
-  const btn = document.getElementById('plan-btn-'+plan);
-  if(btn){ btn.textContent = 'Processing...'; btn.disabled = true; }
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + idToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ plan: plan })
-    });
-
-    const data = await response.json();
-
-    if(!response.ok){
-      throw new Error(data.error || 'Failed to create checkout session');
-    }
-
-    // Redirect to Stripe Checkout
-    const stripe = Stripe(data.publishableKey);
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
-
-    if(error){
-      throw new Error(error.message);
-    }
-  } catch(err){
-    console.error('Checkout error:', err);
-    toast('Checkout failed: ' + err.message);
-    if(btn){ btn.textContent = 'Subscribe Now'; btn.disabled = false; }
-  }
+  toast('Checkout is removed in this local build.');
 }
 
-// ═══ Enterprise Enquiry ═══
 function openEnterpriseEnquiry(){
-  closePaymentModal();
-  let overlay = document.getElementById('enterprise-enquiry-overlay');
-  if(overlay) overlay.remove();
-
-  overlay = document.createElement('div');
-  overlay.id = 'enterprise-enquiry-overlay';
-  overlay.className = 'modal-overlay show';
-  overlay.style.zIndex = '9100';
-  overlay.innerHTML = `
-    <div class="modal-card" style="max-width:520px">
-      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">X</button>
-      <h2 style="color:var(--primary);margin-bottom:8px">Enterprise Plan</h2>
-      <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Custom pricing for organisations that need SSO, white-label branding, batch API access, and dedicated support.</p>
-      <div style="background:var(--bg2);border-radius:8px;padding:16px;margin-bottom:16px">
-        <h3 style="font-size:14px;color:var(--primary);margin-bottom:8px">Enterprise includes:</h3>
-        <ul style="font-size:12px;color:var(--text2);list-style:none;padding:0;margin:0">
-          <li style="padding:4px 0">Everything in Team plan</li>
-          <li style="padding:4px 0">Up to 25+ users</li>
-          <li style="padding:4px 0">SSO / SAML integration</li>
-          <li style="padding:4px 0">Custom branding & templates</li>
-          <li style="padding:4px 0">Batch API access (5,000+ calls/mo)</li>
-          <li style="padding:4px 0">Dedicated support & onboarding</li>
-          <li style="padding:4px 0">Custom invoicing & SLA</li>
-        </ul>
-      </div>
-      <form onsubmit="submitEnterpriseEnquiry(event)" style="display:flex;flex-direction:column;gap:10px">
-        <input type="text" id="ent-name" placeholder="Your name" required style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-        <input type="email" id="ent-email" placeholder="Work email" required style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-        <input type="text" id="ent-company" placeholder="Company name" required style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-        <input type="number" id="ent-users" placeholder="Estimated number of users" min="1" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
-        <textarea id="ent-message" placeholder="Tell us about your requirements (optional)" rows="3" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;background:var(--bg);color:var(--text)"></textarea>
-        <button type="submit" style="background:var(--primary);color:#fff;border:none;padding:10px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Send Enquiry</button>
-      </form>
-      <p style="text-align:center;margin-top:10px;font-size:11px;color:var(--text3)">Or email us directly at <a href="mailto:info@structuralwind.com" style="color:var(--primary)">info@structuralwind.com</a></p>
-    </div>`;
-
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
-
-  // Pre-fill email if signed in
-  if(currentUser && currentUser.email){
-    const emailField = document.getElementById('ent-email');
-    if(emailField) emailField.value = currentUser.email;
-    const nameField = document.getElementById('ent-name');
-    if(nameField && currentUser.displayName) nameField.value = currentUser.displayName;
-  }
+  toast('Enterprise/cloud sales flows are removed in this local build.');
 }
 
 async function submitEnterpriseEnquiry(e){
-  e.preventDefault();
-  const name = document.getElementById('ent-name').value.trim();
-  const email = document.getElementById('ent-email').value.trim();
-  const company = document.getElementById('ent-company').value.trim();
-  const users = document.getElementById('ent-users').value;
-  const message = document.getElementById('ent-message').value.trim();
-
-  if(!name || !email || !company){
-    toast('Please fill in all required fields');
-    return;
-  }
-
-  // Try to send via backend, otherwise fall back to mailto
-  try {
-    if(currentUser){
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/api/enterprise-enquiry', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, company, users, message })
-      });
-      if(response.ok){
-        toast('Enquiry sent! We will be in touch soon.');
-        const overlay = document.getElementById('enterprise-enquiry-overlay');
-        if(overlay) overlay.remove();
-        return;
-      }
-    }
-  } catch(err){
-    console.warn('API enquiry failed, falling back to mailto:', err);
-  }
-
-  // Fallback: open mailto link
-  const subject = encodeURIComponent('Enterprise Plan Enquiry - ' + company);
-  const body = encodeURIComponent(
-    'Name: ' + name + '\n' +
-    'Email: ' + email + '\n' +
-    'Company: ' + company + '\n' +
-    'Estimated Users: ' + (users || 'Not specified') + '\n\n' +
-    (message || 'I am interested in the Enterprise plan.')
-  );
-  window.open('mailto:info@structuralwind.com?subject=' + subject + '&body=' + body, '_blank');
-  toast('Opening email client...');
-  const overlay = document.getElementById('enterprise-enquiry-overlay');
-  if(overlay) overlay.remove();
+  if(e && typeof e.preventDefault === 'function') e.preventDefault();
+  toast('Enterprise/cloud sales flows are removed in this local build.');
 }
 
 // ═══ Billing Portal ═══
@@ -11866,32 +11621,7 @@ async function openBillingPortal(){
 }
 
 async function __unused_openBillingPortal(){
-  if(!currentUser){
-    toast('Please sign in first');
-    return;
-  }
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/create-portal-session', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + idToken,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const data = await response.json();
-
-    if(!response.ok){
-      throw new Error(data.error || 'Failed to open billing portal');
-    }
-
-    window.location.href = data.url;
-  } catch(err){
-    console.error('Billing portal error:', err);
-    toast('Could not open billing portal: ' + err.message);
-  }
+  toast('Billing is removed in this local build.');
 }
 
 // ═══ Check for checkout result in URL ═══
@@ -11900,15 +11630,10 @@ function checkCheckoutResult(){
   const checkout = params.get('checkout');
 
   if(checkout === 'success'){
-    toast('🎉 Subscription activated! Welcome!');
-    // Clean URL
+    toast('Checkout parameters ignored in the local build.');
     window.history.replaceState({}, '', window.location.pathname);
-    // Poll for subscription activation with retries
-    // (webhook may take a few seconds, and our check-subscription has a
-    //  Stripe direct-check fallback that will catch it regardless)
-    pollSubscriptionStatus(0);
   } else if(checkout === 'cancelled'){
-    toast('Checkout cancelled');
+    toast('Checkout is disabled in the local build.');
     window.history.replaceState({}, '', window.location.pathname);
   }
 }
@@ -11936,39 +11661,7 @@ function pollSubscriptionStatus(attempt){
 //   SHARED PROJECTS (Enterprise & Team)
 // ═══════════════════════════════════════════════════
 async function openSharedProjects(){
-  if(!canAccessSharedProjects()){
-    toast('Shared projects require Enterprise or Team plan, or an invitation from a team owner');
-    openPaymentModal();
-    return;
-  }
-  if(!currentUser){
-    showAuthOverlay();
-    return;
-  }
-  toast('Shared projects — loading...');
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/shared-projects', {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + idToken,
-        'Content-Type': 'application/json'
-      }
-    });
-    if(!response.ok){
-      let msg = 'Failed to load shared projects';
-      try {
-        const errBody = await response.json();
-        if(errBody && errBody.error) msg = errBody.error;
-      } catch(e){}
-      throw new Error(msg);
-    }
-    const data = await response.json();
-    showSharedProjectsOverlay(data.projects || []);
-  } catch(err){
-    console.error('Shared projects error:', err);
-    toast('Could not load shared projects: ' + err.message);
-  }
+  toast('Shared projects are not implemented in this local build yet.');
 }
 
 function showSharedProjectsOverlay(projects){
@@ -12039,160 +11732,25 @@ function showSharedProjectsOverlay(projects){
 }
 
 async function inviteTeamMember(){
-  if(!hasSharedProjects()){
-    toast('Only the team owner (Team or Enterprise plan) can invite members');
-    return;
-  }
-  const email = prompt('Enter team member email:');
-  if(!email) return;
-  if(!currentUser){ toast('Please sign in'); return; }
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/invite-member', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
-    });
-    if(!response.ok){ const d = await response.json(); throw new Error(d.error || 'Invite failed'); }
-    toast('Invitation sent to ' + email);
-    openSharedProjects(); // Refresh
-  } catch(err){
-    toast('Could not invite: ' + err.message);
-  }
+  toast('Team invites are not available in this local build.');
 }
 
 async function loadSharedProject(projectId){
-  if(!currentUser) return;
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/load-project?id=' + projectId, {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load project');
-    const data = await response.json();
-    // Apply project data to state
-    if(data.state){
-      Object.assign(S, data.state);
-      mergeProjectStateDefaults(data.state);
-      if(typeof S.vrManual !== 'boolean') S.vrManual = true;
-      currentProjectId = projectId;
-      currentProjectName = data.name || 'Untitled';
-      currentProjectShared = true; // mark as shared project
-      pushStateToUI();
-      onInput();
-      toast('Loaded shared project: ' + currentProjectName);
-    }
-    const overlay = document.getElementById('shared-projects-overlay');
-    if(overlay) overlay.remove();
-  } catch(err){
-    toast('Could not load project: ' + err.message);
-  }
+  toast('Shared projects are not implemented in this local build yet.');
 }
 
 // Save updates back to a shared project
 async function saveSharedProject(){
-  if(!currentUser || !currentProjectShared || !currentProjectId){
-    toast('No shared project loaded');
-    return;
-  }
-  try {
-    const idToken = await currentUser.getIdToken();
-    const state = getProjectState();
-    const response = await fetch('/api/shared-projects', {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId: currentProjectId,
-        name: currentProjectName,
-        state: state
-      })
-    });
-    if(!response.ok){ const d = await response.json(); throw new Error(d.error || 'Save failed'); }
-    toast('Shared project saved: ' + currentProjectName);
-  } catch(err){
-    toast('Could not save shared project: ' + err.message);
-  }
+  toast('Shared project sync is not implemented in this local build yet.');
 }
 
 // View edit history for a shared project
 async function viewProjectHistory(projectId){
-  if(!currentUser) return;
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/activity-log?projectId=' + projectId, {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load history');
-    const data = await response.json();
-    const entries = (data.entries || []).filter(e => e.projectId === projectId);
-
-    let overlay = document.getElementById('project-history-overlay');
-    if(overlay) overlay.remove();
-    overlay = document.createElement('div');
-    overlay.id = 'project-history-overlay';
-    overlay.className = 'modal-overlay show';
-    overlay.style.zIndex = '9000';
-
-    let rows = '';
-    if(entries.length === 0){
-      rows = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">No edit history found for this project</td></tr>';
-    } else {
-      entries.forEach(e => {
-        const userShort = (e.user || 'Unknown').split('@')[0];
-        const actionColors = { created: '#27ae60', updated: 'var(--primary)', shared: '#8e44ad', deleted: '#e74c3c' };
-        const color = actionColors[e.action] || 'var(--text2)';
-        const changes = e.changes ? e.changes.map(c => '<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:3px;margin:1px;display:inline-block">' + c + '</span>').join(' ') : '';
-        rows += '<tr>' +
-          '<td style="white-space:nowrap;font-size:10px;color:var(--text3)">' + new Date(e.timestamp).toLocaleString() + '</td>' +
-          '<td style="font-weight:600;font-size:12px">' + userShort + '</td>' +
-          '<td><span style="color:' + color + ';font-weight:600;text-transform:capitalize">' + (e.action || 'unknown') + '</span></td>' +
-          '<td style="font-size:11px">' + (e.details || '') + (changes ? '<br>' + changes : '') + '</td>' +
-          '</tr>';
-      });
-    }
-
-    overlay.innerHTML =
-      '<div class="modal-card" style="max-width:700px">' +
-        '<button class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">X</button>' +
-        '<h2 style="color:var(--primary);margin-bottom:8px">Project History</h2>' +
-        '<div style="max-height:400px;overflow-y:auto">' +
-          '<table class="result-table" style="width:100%">' +
-            '<thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>' +
-            '<tbody>' + rows + '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', ev => { if(ev.target === overlay) overlay.remove(); });
-  } catch(err){
-    toast('Could not load history: ' + err.message);
-  }
+  toast('Project history is not implemented in this local build yet.');
 }
 
 async function shareCurrentProject(){
-  if(!hasSharedProjects()){
-    toast('Shared projects require Team or Enterprise plan');
-    openPaymentModal();
-    return;
-  }
-  if(!currentUser){ showAuthOverlay(); return; }
-  const name = prompt('Project name:', 'Wind Analysis — ' + new Date().toLocaleDateString());
-  if(!name) return;
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/shared-projects', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, state: getProjectState() })
-    });
-    if(!response.ok){ const d = await response.json(); throw new Error(d.error || 'Share failed'); }
-    toast('Project shared with team: ' + name);
-  } catch(err){
-    toast('Could not share: ' + err.message);
-  }
+  toast('Project sharing is not available in this local build yet.');
 }
 
 // ═══════════════════════════════════════════════════
@@ -12318,8 +11876,8 @@ function pushStateToUI(){
   readKvOverrideFromUi();
 }
 
-// Save to localStorage (works for all users)
-function saveProjectLocal(name, state){
+// Browser fallback cache (used only if local server persistence is unavailable)
+function saveProjectBrowserFallback(name, state){
   const projects = JSON.parse(localStorage.getItem('sw_projects') || '[]');
   const existing = currentProjectId ? projects.findIndex(p => p.id === currentProjectId) : -1;
   const now = new Date().toISOString();
@@ -12336,13 +11894,80 @@ function saveProjectLocal(name, state){
   localStorage.setItem('sw_projects', JSON.stringify(projects));
 }
 
-function getLocalProjects(){
+function getBrowserFallbackProjects(){
   return JSON.parse(localStorage.getItem('sw_projects') || '[]');
 }
 
-function deleteLocalProject(id){
-  const projects = getLocalProjects().filter(p => p.id !== id);
+function deleteBrowserFallbackProject(id){
+  const projects = getBrowserFallbackProjects().filter(p => p.id !== id);
   localStorage.setItem('sw_projects', JSON.stringify(projects));
+}
+
+async function saveProjectLocal(name, state){
+  try {
+    const response = await fetch('/api/save-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, projectId: currentProjectId, state })
+    });
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Local save failed');
+    currentProjectId = data.projectId;
+    saveProjectBrowserFallback(name, state);
+    return { source: 'server', projectId: currentProjectId };
+  } catch(err) {
+    console.warn('Local server save failed, using browser fallback:', err);
+    saveProjectBrowserFallback(name, state);
+    return { source: 'browser-fallback', projectId: currentProjectId };
+  }
+}
+
+async function getLocalProjects(){
+  try {
+    const response = await fetch('/api/list-projects', { method: 'GET' });
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Local project list failed');
+    return (data.projects || []).map(function(p){
+      return {
+        ...p,
+        location: p.location || p.state?.address || '',
+        updated: p.updatedAt || p.updated || p.created || null
+      };
+    });
+  } catch(err){
+    console.warn('Local server list failed, using browser fallback:', err);
+    return getBrowserFallbackProjects();
+  }
+}
+
+async function loadLocalProject(projectId){
+  try {
+    const response = await fetch('/api/load-project?id=' + encodeURIComponent(projectId), { method: 'GET' });
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || 'Failed to load local project');
+    if(data.project) return data.project;
+    return data;
+  } catch(err){
+    console.warn('Local server load failed, using browser fallback:', err);
+    return getBrowserFallbackProjects().find(p => p.id === projectId) || null;
+  }
+}
+
+async function deleteLocalProject(id){
+  try {
+    const response = await fetch('/api/delete-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: id })
+    });
+    if(!response.ok){
+      const data = await response.json().catch(function(){ return {}; });
+      throw new Error(data.error || 'Local delete failed');
+    }
+  } catch(err){
+    console.warn('Local server delete failed, continuing with browser fallback:', err);
+  }
+  deleteBrowserFallbackProject(id);
 }
 
 async function saveProject(){
@@ -12351,70 +11976,14 @@ async function saveProject(){
   currentProjectName = name;
   const state = getProjectState();
 
-  // Always save locally first (instant, works offline)
-  saveProjectLocal(name, state);
-  toast('Project saved: ' + name);
+  const saved = await saveProjectLocal(name, state);
+  toast(saved.source === 'server' ? 'Project saved locally: ' + name : 'Project saved in browser fallback: ' + name);
 
-  // If this is a shared project, save back to shared only (not a duplicate personal cloud project)
-  if(currentProjectShared && currentProjectId && currentUser && canAccessSharedProjects()){
-    try {
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/api/shared-projects', {
-        method: 'PUT',
-        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: currentProjectId, name: name, state: state })
-      });
-      if(response.ok) toast('Shared project updated');
-    } catch(err){ console.warn('Shared project save failed:', err); }
-  }
-
-  // Also save to cloud if signed in + paid plan (skip when viewing a team shared project)
-  if(currentUser && hasPlanFeature('save') && !currentProjectShared){
-    try {
-      const idToken = await currentUser.getIdToken();
-      const body = { name, projectId: currentProjectId, state };
-      const response = await fetch('/api/save-project', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if(response.ok){
-        const data = await response.json();
-        currentProjectId = data.projectId;
-        toast('☁️ Synced to cloud');
-      }
-    } catch(err){
-      console.warn('Cloud save failed (local save OK):', err);
-    }
-  }
+  currentProjectShared = false;
 }
 
 async function openSavedProjects(){
-  // Start with local projects (always available)
-  let projects = getLocalProjects();
-
-  // Also fetch cloud projects if signed in + paid
-  if(currentUser && hasPlanFeature('save')){
-    try {
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/api/list-projects', {
-        method: 'GET',
-        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-      });
-      if(response.ok){
-        const data = await response.json();
-        const cloudProjects = (data.projects || []).map(p => ({ ...p, cloud: true }));
-        // Merge: cloud projects first, then local-only ones
-        const cloudIds = new Set(cloudProjects.map(p => p.id));
-        const localOnly = projects.filter(p => !cloudIds.has(p.id));
-        projects = [...cloudProjects, ...localOnly];
-      }
-    } catch(err){
-      console.warn('Could not fetch cloud projects:', err);
-    }
-  }
-
-  showSavedProjectsOverlay(projects);
+  showSavedProjectsOverlay(await getLocalProjects());
 }
 
 function showSavedProjectsOverlay(projects){
@@ -12459,8 +12028,7 @@ function showSavedProjectsOverlay(projects){
 }
 
 async function loadSavedProject(projectId){
-  // Try local first
-  const local = getLocalProjects().find(p => p.id === projectId);
+  const local = await loadLocalProject(projectId);
   if(local && local.state){
     Object.assign(S, local.state);
     mergeProjectStateDefaults(local.state);
@@ -12474,54 +12042,13 @@ async function loadSavedProject(projectId){
     if(overlay) overlay.remove();
     return;
   }
-
-  // Try cloud
-  if(!currentUser){ toast('Sign in to load cloud projects'); return; }
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/load-project?id=' + projectId, {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load');
-    const data = await response.json();
-    if(data.state){
-      Object.assign(S, data.state);
-      mergeProjectStateDefaults(data.state);
-      if(typeof S.vrManual !== 'boolean') S.vrManual = true;
-      currentProjectId = projectId;
-      currentProjectName = data.name || 'Untitled';
-      pushStateToUI();
-      onInput();
-      toast('Loaded: ' + currentProjectName);
-    }
-    const overlay = document.getElementById('saved-projects-overlay');
-    if(overlay) overlay.remove();
-  } catch(err){
-    toast('Could not load: ' + err.message);
-  }
+  toast('Project not found in local storage.');
 }
 
 async function deleteSavedProject(projectId, name){
   if(!confirm('Delete project "' + name + '"?')) return;
 
-  // Delete locally
-  deleteLocalProject(projectId);
-
-  // Delete from cloud too if signed in
-  if(currentUser && !projectId.startsWith('local_')){
-    try {
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/api/delete-project', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: projectId })
-      });
-      if(!response.ok) console.warn('Cloud delete failed');
-    } catch(err){
-      console.warn('Cloud delete failed:', err);
-    }
-  }
+  await deleteLocalProject(projectId);
 
   toast('Deleted: ' + name);
   openSavedProjects(); // Refresh
@@ -12531,25 +12058,7 @@ async function deleteSavedProject(projectId, name){
 //   ACTIVITY LOG (Team/Enterprise)
 // ═══════════════════════════════════════════════════
 async function openActivityLog(){
-  if(!hasPlanFeature('activityLog')){
-    toast('Activity log requires Team or Enterprise plan');
-    openPaymentModal();
-    return;
-  }
-  if(!currentUser){ showAuthOverlay(); return; }
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/activity-log', {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load activity log');
-    const data = await response.json();
-    showActivityLogOverlay(data.entries || []);
-  } catch(err){
-    toast('Could not load activity log: ' + err.message);
-  }
+  toast('Shared activity log is not available in this local build yet.');
 }
 
 function showActivityLogOverlay(entries){
@@ -12603,25 +12112,7 @@ function showActivityLogOverlay(entries){
 //   API KEY MANAGEMENT (Team/Enterprise)
 // ═══════════════════════════════════════════════════
 async function openApiKeys(){
-  if(!hasPlanFeature('api')){
-    toast('API keys are not included on Pro. Upgrade to Team or Enterprise.');
-    openPaymentModal();
-    return;
-  }
-  if(!currentUser){ showAuthOverlay(); return; }
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/api-keys', {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load API keys');
-    const data = await response.json();
-    showApiKeysOverlay(data.keys || [], data.usage || {});
-  } catch(err){
-    toast('Could not load API keys: ' + err.message);
-  }
+  toast('API key management is not part of this local build yet.');
 }
 
 function showApiKeysOverlay(keys, usage){
@@ -12677,7 +12168,7 @@ function showApiKeysOverlay(keys, usage){
       <button onclick="generateApiKey()" style="background:var(--primary);color:var(--bg);border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">+ Generate New Key</button>
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
         <h4 style="color:var(--text2);margin-bottom:6px">Quick Start</h4>
-        <pre style="background:var(--surface2);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;color:var(--text)">curl -X POST https://structuralwind.com/api/v1/wind-pressure \\
+        <pre style="background:var(--surface2);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;color:var(--text)">curl -X POST https://example.local/api/v1/wind-pressure \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"lat":-36.85,"lng":174.76,"width":20,"depth":15,"height":6}'</pre>
@@ -12689,64 +12180,18 @@ function showApiKeysOverlay(keys, usage){
 }
 
 async function generateApiKey(){
-  if(!currentUser) return;
-  const name = prompt('Key name (optional):', 'Default');
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/api-keys', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || 'Default' })
-    });
-    if(!response.ok){ const d = await response.json(); throw new Error(d.error || 'Failed'); }
-    const data = await response.json();
-    toast('API key created! Key: ' + data.key.substring(0, 12) + '...');
-    openApiKeys(); // Refresh
-  } catch(err){
-    toast('Could not create key: ' + err.message);
-  }
+  toast('API key generation is not implemented in this local build yet.');
 }
 
 async function revokeApiKey(keyId){
-  if(!confirm('Revoke this API key? This cannot be undone.')) return;
-  if(!currentUser) return;
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/api-keys/' + keyId, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Revoke failed');
-    toast('API key revoked');
-    openApiKeys(); // Refresh
-  } catch(err){
-    toast('Could not revoke: ' + err.message);
-  }
+  toast('API key revocation is not implemented in this local build yet.');
 }
 
 // ═══════════════════════════════════════════════════
 //   TEMPLATES (Enterprise)
 // ═══════════════════════════════════════════════════
 async function openTemplates(){
-  if(!hasPlanFeature('templates')){
-    toast('Templates require Enterprise plan');
-    openPaymentModal();
-    return;
-  }
-  if(!currentUser){ showAuthOverlay(); return; }
-
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/templates', {
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Failed to load templates');
-    const data = await response.json();
-    showTemplatesOverlay(data.templates || []);
-  } catch(err){
-    toast('Could not load templates: ' + err.message);
-  }
+  showTemplatesOverlay([]);
 }
 
 function showTemplatesOverlay(templates){
@@ -12812,44 +12257,11 @@ function applyTemplate(preset){
 }
 
 async function saveAsTemplate(){
-  if(!currentUser) return;
-  const name = prompt('Template name:');
-  if(!name) return;
-  const desc = prompt('Description (optional):','');
-  try {
-    const idToken = await currentUser.getIdToken();
-    const preset = {
-      width: S.width, depth: S.depth, height: S.height, pitch: S.pitch,
-      roofType: S.roofType, terrainCat: S.terrainCat, parapet: S.parapet, overhang: S.overhang
-    };
-    const response = await fetch('/api/templates', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description: desc, preset })
-    });
-    if(!response.ok){ const d = await response.json(); throw new Error(d.error || 'Failed'); }
-    toast('Template saved: ' + name);
-    openTemplates(); // Refresh
-  } catch(err){
-    toast('Could not save template: ' + err.message);
-  }
+  toast('Custom template saving is not implemented in this local build yet.');
 }
 
 async function deleteTemplate(templateId){
-  if(!confirm('Delete this template?')) return;
-  if(!currentUser) return;
-  try {
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch('/api/templates/' + templateId, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' }
-    });
-    if(!response.ok) throw new Error('Delete failed');
-    toast('Template deleted');
-    openTemplates(); // Refresh
-  } catch(err){
-    toast('Could not delete: ' + err.message);
-  }
+  toast('Custom templates are not implemented in this local build yet.');
 }
 
 // ═══════════════════════════════════════════════
@@ -14777,7 +14189,7 @@ async function parseIfcAiErrorResponseBody(res){
 }
 
 async function fetchIfcAiRefinement(payload){
-  const url = (typeof window !== 'undefined' && window.STRUCTURALWIND_IFC_AI_URL) || '';
+  const url = (typeof window !== 'undefined' && window.WIND_ANALYSIS_IFC_AI_URL) || '';
   if(!url) return null;
   const headers = { 'Content-Type': 'application/json' };
   const authHdrs = await cwDetectionAuthHeaders({ forceRefresh: true });
@@ -14859,7 +14271,7 @@ function updateIfcAiAssistUI(){
   }
   if(hint){
     hint.textContent = allowed
-      ? 'When enabled, meshes that are low-confidence or disagree with analytic labels are sent for AI review (selective; building footprint included). Pro subscription required.'
+      ? 'When enabled, meshes that are low-confidence or disagree with analytic labels are sent for optional AI review when a local/remote refinement endpoint is configured.'
 : 'Cloud AI refinement is optional in this local build.';
   }
 }
@@ -14883,7 +14295,7 @@ function onIfcAiAssistChange(){
 }
 
 // Uploaded meshes: MLP semantic class (interior/wall/roof/floor), then analytic normal+wind mapping — no bbox heuristics.
-// Optional: user-opt-in cloud refinement for low-confidence / disagreeing meshes (STRUCTURALWIND_IFC_AI_URL).
+// Optional: user-opt-in cloud refinement for low-confidence / disagreeing meshes (WIND_ANALYSIS_IFC_AI_URL).
 async function classifyUploadedFaces(){
   if(!uploadedModelGroup) return;
   uploadFaceMap.clear();
@@ -15137,23 +14549,23 @@ async function classifyUploadedFaces(){
     try{
       if(sessionStorage.getItem('sw_ifc_ai_auth_warned') !== '1'){
         sessionStorage.setItem('sw_ifc_ai_auth_warned', '1');
-        toast('Sign in with a Pro account to use Cloud AI.');
+        toast('Cloud AI refinement is not enabled in this local build.');
       }
     }catch(e3){
-      toast('Sign in with a Pro account to use Cloud AI.');
+      toast('Cloud AI refinement is not enabled in this local build.');
     }
     return;
   }
 
-  const apiUrl = (typeof window !== 'undefined' && window.STRUCTURALWIND_IFC_AI_URL) || '';
+  const apiUrl = (typeof window !== 'undefined' && window.WIND_ANALYSIS_IFC_AI_URL) || '';
   if(!apiUrl){
     try{
       if(sessionStorage.getItem('sw_ifc_ai_url_warned') !== '1'){
         sessionStorage.setItem('sw_ifc_ai_url_warned', '1');
-        toast('Cloud AI: set window.STRUCTURALWIND_IFC_AI_URL to your classifier endpoint.');
+        toast('Cloud AI: set window.WIND_ANALYSIS_IFC_AI_URL to your classifier endpoint.');
       }
     }catch(e2){
-      toast('Cloud AI: set window.STRUCTURALWIND_IFC_AI_URL to your classifier endpoint.');
+      toast('Cloud AI: set window.WIND_ANALYSIS_IFC_AI_URL to your classifier endpoint.');
     }
     return;
   }
