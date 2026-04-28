@@ -6588,57 +6588,116 @@ function buildNorthArrow(){
 
 function buildParticles(){
   if(particleSys){scene.remove(particleSys);particleSys.geometry.dispose();particleSys.material.dispose();particleSys=null}
-  const N=500,pos=new Float32Array(N*3),vels=[];
+  const N=720,pos=new Float32Array(N*3),cols=new Float32Array(N*3),meta=[];
   const w=S.width,d=S.depth,h=S.height;
   const ang=(S.windAngle+(S.R.angleOff||0))*Math.PI/180;
   const wx=-Math.sin(ang), wz=-Math.cos(ang); // wind travel direction
   const px=Math.cos(ang), pz=-Math.sin(ang);  // perpendicular to wind
-  const spread=Math.max(w,d)*1.5;
+  const spread=Math.max(w,d)*1.75;
+  const windwardP=Math.abs(S.R?.faces?.windward?.p||0.85);
+  const leewardP=Math.abs(S.R?.faces?.leeward?.p||0.45);
+  const roofP=Math.max(Math.abs(S.R?.faces?.roof_ww?.p||0),Math.abs(S.R?.faces?.roof_lw?.p||0));
+  const sideP=Math.max(
+    Math.abs(S.R?.faces?.side1_zone1?.p||0),
+    Math.abs(S.R?.faces?.side1_zone2?.p||0),
+    Math.abs(S.R?.faces?.side1_zone3?.p||0)
+  );
+  const pressureGain=Math.min(2.2, Math.max(0.75, windwardP + roofP*0.55));
+  const wakeGain=Math.min(2.1, Math.max(0.55, leewardP + roofP*0.35));
+  const sideGain=Math.min(1.8, Math.max(0.45, sideP + windwardP*0.2));
   for(let i=0;i<N;i++){
-    const upDist=Math.random()*25; // distance upwind
+    const upDist=Math.random()*30+4; // distance upwind
     const side=(Math.random()-.5)*spread;
     pos[i*3]  = -wx*upDist + px*side;
-    pos[i*3+1]= Math.random()*h*2;
+    pos[i*3+1]= Math.random()*Math.max(h*2.2,7);
     pos[i*3+2]= -wz*upDist + pz*side;
-    vels.push({x:(Math.random()-.5)*.1,y:(Math.random()-.5)*.05,z:(Math.random()-.5)*.1});
+    cols[i*3]=0.56; cols[i*3+1]=0.86; cols[i*3+2]=1.0;
+    meta.push({
+      jitterX:(Math.random()-.5)*.06,
+      jitterY:(Math.random()-.5)*.03,
+      jitterZ:(Math.random()-.5)*.06,
+      seed:Math.random()*Math.PI*2,
+      pressureGain,
+      wakeGain,
+      sideGain
+    });
   }
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  particleSys=new THREE.Points(g,new THREE.PointsMaterial({color:0xaaddff,size:.15,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false}));
-  particleSys.userData.vels=vels;scene.add(particleSys);
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(cols,3));
+  particleSys=new THREE.Points(g,new THREE.PointsMaterial({size:.18,vertexColors:true,transparent:true,opacity:.72,blending:THREE.AdditiveBlending,depthWrite:false}));
+  particleSys.userData.meta=meta;scene.add(particleSys);
 }
 function tickParticles(){
   if(!particleSys||!S.showParticles)return;
-  const p=particleSys.geometry.attributes.position, vs=particleSys.userData.vels;
+  const p=particleSys.geometry.attributes.position;
+  const c=particleSys.geometry.attributes.color;
+  const meta=particleSys.userData.meta||[];
   const w=S.width,d=S.depth,h=S.height;
   const ang=(S.windAngle+(S.R.angleOff||0))*Math.PI/180;
   const wx=-Math.sin(ang), wz=-Math.cos(ang); // wind travel direction
   const px=Math.cos(ang), pz=-Math.sin(ang);  // perpendicular
-  const spread=Math.max(w,d)*1.5;
+  const spread=Math.max(w,d)*1.75;
   for(let i=0;i<p.count;i++){
+    const m=meta[i]||{jitterX:0,jitterY:0,jitterZ:0,seed:0,pressureGain:1,wakeGain:1,sideGain:1};
     let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-    // Main velocity along wind direction + per-particle jitter
-    let vx=wx*.25+vs[i].x, vy=vs[i].y, vz=wz*.25+vs[i].z;
-    // Deflect around the building
-    if(Math.abs(x)<w/2+2 && Math.abs(z)<d/2+2 && y<h+2){
-      vy+=.15;
-      // Push sideways (perpendicular to wind) away from centre
-      const side=x*px+z*pz;
-      vx+=px*(side>0?.1:-.1);
-      vz+=pz*(side>0?.1:-.1);
+    const downwind = x*wx + z*wz;
+    const side = x*px + z*pz;
+    const isFrontBand = downwind > -(d/2+5) && downwind < 1.5;
+    const isRoofBand = downwind >= -1 && downwind <= d/2+4 && Math.abs(side) < w/2+2;
+    const isWakeBand = downwind > d/2 && downwind < d/2+14 && Math.abs(side) < w/2+5;
+    const nearSide = Math.abs(side) >= w/2-1 && Math.abs(side) <= w/2+5 && downwind > -(d/2+4) && downwind < d/2+6;
+
+    let speed = .18 + m.pressureGain*.05;
+    let vx=wx*speed + m.jitterX, vy=m.jitterY, vz=wz*speed + m.jitterZ;
+
+    if(isFrontBand && y < h+2.5){
+      const wallLift = (1 - Math.min(1, Math.abs(side)/(w/2+3))) * m.pressureGain;
+      vx *= 0.58;
+      vz *= 0.58;
+      vy += 0.055 + wallLift*0.05;
+    }
+    if(isRoofBand){
+      const roofBoost = (1 - Math.min(1, Math.abs(side)/(w/2+2))) * m.pressureGain;
+      vx += wx*(0.045 + roofBoost*0.03);
+      vz += wz*(0.045 + roofBoost*0.03);
+      vy += 0.035 + roofBoost*0.035;
+    }
+    if(nearSide && y < h+2){
+      const sgn = side>=0 ? 1 : -1;
+      vx += px*sgn*(0.04 + m.sideGain*0.03);
+      vz += pz*sgn*(0.04 + m.sideGain*0.03);
+    }
+    if(isWakeBand){
+      const swirl = Math.sin((downwind-d/2)*0.65 + m.seed)*m.wakeGain;
+      vx *= 0.55;
+      vz *= 0.55;
+      vx += px*swirl*0.045;
+      vz += pz*swirl*0.045;
+      vy += Math.cos((downwind-d/2)*0.55 + m.seed)*0.03*m.wakeGain;
     }
     x+=vx;y+=vy;z+=vz;
     // Reset if particle traveled too far downwind or out of bounds
-    const downwind=x*wx+z*wz;
     if(downwind>Math.max(w,d)+15||y<-1||y>h*3){
-      const upDist=Math.random()*5+15;
+      const upDist=Math.random()*8+18;
       const side2=(Math.random()-.5)*spread;
       x=-wx*upDist+px*side2;
-      y=Math.random()*h*2;
+      y=Math.random()*Math.max(h*2.2,7);
       z=-wz*upDist+pz*side2;
     }
     p.setXYZ(i,x,y,z);
+
+    const localSpeed = Math.sqrt(vx*vx + vy*vy + vz*vz);
+    const hot = Math.min(1, Math.max(0, (localSpeed - 0.12) / 0.2));
+    const wakeTint = isWakeBand ? 0.25 : 0;
+    c.setXYZ(i,
+      0.45 + hot*0.55,
+      0.75 + (1-hot)*0.15 - wakeTint*0.2,
+      1.0 - hot*0.65 - wakeTint*0.25
+    );
   }
   p.needsUpdate=true;
+  c.needsUpdate=true;
 }
 
 // ═══════════════════════════════════════════════
