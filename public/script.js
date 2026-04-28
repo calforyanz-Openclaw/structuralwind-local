@@ -7344,11 +7344,8 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
       try {
         const resp = await fetch(url);
         if(resp.status === 429){
-          const ra = resp.headers.get('Retry-After');
-          const waitMs = ra ? Math.min(60000, Math.max(1500, parseInt(ra, 10) * 1000 || 2500)) : 2000 * (attempt + 1);
-          console.warn('Open-Meteo 429 — waiting '+Math.round(waitMs/1000)+'s before retry');
-          await new Promise(r=>setTimeout(r, waitMs));
-          continue;
+          console.warn('Open-Meteo 429 — switching to fallback elevation provider');
+          return false;
         }
         if(!resp.ok && resp.status >= 500 && attempt < maxAttempts - 1){
           await new Promise(r=>setTimeout(r, 800 * (attempt + 1)));
@@ -7381,6 +7378,22 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
     return true;
   }
 
+  async function fetchOpenElevationBatch(start, end){
+    const n = end - start;
+    const pts = [];
+    for(let j=start; j<end; j++) pts.push(Number(latArr[j]).toFixed(6)+','+Number(lngArr[j]).toFixed(6));
+    const url = 'https://api.open-elevation.com/api/v1/lookup?locations=' + encodeURIComponent(pts.join('|'));
+    const resp = await fetch(url);
+    const data = await resp.json().catch(()=>null);
+    if(!resp.ok || !data || !Array.isArray(data.results) || data.results.length !== n) return false;
+    for(let j=0; j<n; j++){
+      const ev = data.results[j] && data.results[j].elevation;
+      if(ev == null || !Number.isFinite(Number(ev))) return false;
+      result[start+j] = Number(ev);
+    }
+    return true;
+  }
+
   for(let start=0; start<latArr.length; start+=BATCH){
     const end = Math.min(start+BATCH, latArr.length);
     if(useOpenMeteo && start > 0) await new Promise(r=>setTimeout(r, 280));
@@ -7394,7 +7407,8 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
       continue;
     }
     if(start > 0) await new Promise(r=>setTimeout(r, 120));
-    const ok = await fetchElevationApiEuBatch(start, end);
+    let ok = await fetchElevationApiEuBatch(start, end);
+    if(!ok) ok = await fetchOpenElevationBatch(start, end);
     if(!ok) throw new Error('Elevation query failed (fallback)');
   }
   if(result.some(e => e === undefined)) throw new Error('Incomplete elevation data');
@@ -7738,6 +7752,10 @@ function resetSiteTerrainForNewPinLocation(){
   S.terrainZones = [];
   clearStaleOsmTerrainCache();
   S.manualShieldBuildings = [];
+  if(!Array.isArray(S.TC_dir)) S.TC_dir = new Array(8).fill(null);
+  if(!Array.isArray(S.Ms)) S.Ms = new Array(8).fill(1);
+  if(!Array.isArray(S.Mzcat)) S.Mzcat = new Array(8).fill(null);
+  if(!Array.isArray(S.shieldingDetails)) S.shieldingDetails = new Array(8).fill(null).map(()=>({ ns:0, ls:0, hs:0, bs:0, s:Infinity, Ms:1.0 }));
   const h = getDesignBuildingHeightH();
   for(let i=0;i<8;i++){
     S.TC_dir[i] = null;

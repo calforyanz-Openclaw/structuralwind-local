@@ -109,12 +109,48 @@ async function fetchElevations(lats, lngs) {
   for (let i = 0; i < lats.length; i += BATCH) {
     const latBatch = lats.slice(i, i + BATCH).map(v => Number(v).toFixed(6)).join(',');
     const lngBatch = lngs.slice(i, i + BATCH).map(v => Number(v).toFixed(6)).join(',');
-    const url = `https://api.open-meteo.com/v1/elevation?latitude=${latBatch}&longitude=${lngBatch}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`open_meteo_http_${resp.status}`);
-    const data = await resp.json();
-    if (!Array.isArray(data.elevation)) throw new Error('invalid_open_meteo_payload');
-    out.push(...data.elevation.map(Number));
+    const openMeteoUrl = `https://api.open-meteo.com/v1/elevation?latitude=${latBatch}&longitude=${lngBatch}`;
+    const euPts = [];
+    for (let j = i; j < Math.min(i + BATCH, lats.length); j++) euPts.push([Number(lats[j]), Number(lngs[j])]);
+    const euUrl = 'https://www.elevation-api.eu/v1/elevation?pts=' + encodeURIComponent(JSON.stringify(euPts));
+    const openElevationUrl = 'https://api.open-elevation.com/api/v1/lookup?locations=' + encodeURIComponent(euPts.map(([a,b]) => a.toFixed(6) + ',' + b.toFixed(6)).join('|'));
+
+    let done = false;
+
+    try {
+      const resp = await fetch(openMeteoUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data.elevation)) {
+          out.push(...data.elevation.map(Number));
+          done = true;
+        }
+      }
+    } catch {}
+
+    if (!done) {
+      try {
+        const resp = await fetch(euUrl);
+        const data = await resp.json();
+        if (resp.ok && Array.isArray(data.elevations)) {
+          out.push(...data.elevations.map(Number));
+          done = true;
+        }
+      } catch {}
+    }
+
+    if (!done) {
+      try {
+        const resp = await fetch(openElevationUrl);
+        const data = await resp.json();
+        if (resp.ok && Array.isArray(data.results)) {
+          out.push(...data.results.map(row => Number(row.elevation)));
+          done = true;
+        }
+      } catch {}
+    }
+
+    if (!done) throw new Error('elevation_all_providers_failed');
   }
   return out;
 }
