@@ -6586,59 +6586,96 @@ function buildNorthArrow(){
   }
 }
 
+function disposeWindFlow(){
+  if(!particleSys) return;
+  scene.remove(particleSys);
+  particleSys.traverse(obj=>{
+    if(obj.geometry && typeof obj.geometry.dispose === 'function') obj.geometry.dispose();
+    if(obj.material){
+      if(Array.isArray(obj.material)) obj.material.forEach(m=>m && m.dispose && m.dispose());
+      else if(typeof obj.material.dispose === 'function') obj.material.dispose();
+    }
+  });
+  particleSys = null;
+}
+
 function buildParticles(){
-  if(particleSys){scene.remove(particleSys);particleSys.geometry.dispose();particleSys.material.dispose();particleSys=null}
-  const N=500,pos=new Float32Array(N*3),vels=[];
+  disposeWindFlow();
+  const N=44, arrows=[];
   const w=S.width,d=S.depth,h=S.height;
   const ang=(S.windAngle+(S.R.angleOff||0))*Math.PI/180;
   const wx=-Math.sin(ang), wz=-Math.cos(ang); // wind travel direction
   const px=Math.cos(ang), pz=-Math.sin(ang);  // perpendicular to wind
-  const spread=Math.max(w,d)*1.5;
+  const spread=Math.max(w,d)*1.35;
+  const flow = new THREE.Group();
   for(let i=0;i<N;i++){
-    const upDist=Math.random()*25; // distance upwind
+    const upDist=Math.random()*22 + 2; // distance upwind
     const side=(Math.random()-.5)*spread;
-    pos[i*3]  = -wx*upDist + px*side;
-    pos[i*3+1]= Math.random()*h*2;
-    pos[i*3+2]= -wz*upDist + pz*side;
-    vels.push({x:(Math.random()-.5)*.1,y:(Math.random()-.5)*.05,z:(Math.random()-.5)*.1});
+    const y = 0.6 + Math.random()*Math.max(2.6,h*1.25);
+    const origin = new THREE.Vector3(-wx*upDist + px*side, y, -wz*upDist + pz*side);
+    const len = 1.25 + Math.random()*0.95;
+    const arrow = new THREE.ArrowHelper(new THREE.Vector3(wx,0,wz).normalize(), origin.clone(), len, 0xff5a5a, 0.85, 0.45);
+    if(arrow.line && arrow.line.material){
+      arrow.line.material.transparent = true;
+      arrow.line.material.opacity = 0.9;
+    }
+    if(arrow.cone && arrow.cone.material){
+      arrow.cone.material.transparent = true;
+      arrow.cone.material.opacity = 0.95;
+    }
+    flow.add(arrow);
+    arrows.push({
+      arrow,
+      len,
+      baseY: y,
+      upDist,
+      side,
+      speed: 0.18 + Math.random()*0.08,
+      sideDrift: (Math.random()-.5)*0.025,
+      liftDrift: Math.random()*0.02,
+      phase: Math.random()*Math.PI*2
+    });
   }
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  particleSys=new THREE.Points(g,new THREE.PointsMaterial({color:0xaaddff,size:.15,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false}));
-  particleSys.userData.vels=vels;scene.add(particleSys);
+  particleSys = flow;
+  particleSys.userData.arrows = arrows;
+  particleSys.userData.dir = { wx, wz, px, pz, spread };
+  particleSys.userData.tick = 0;
+  scene.add(particleSys);
 }
 function tickParticles(){
   if(!particleSys||!S.showParticles)return;
-  const p=particleSys.geometry.attributes.position, vs=particleSys.userData.vels;
+  const arrows = particleSys.userData.arrows || [];
   const w=S.width,d=S.depth,h=S.height;
   const ang=(S.windAngle+(S.R.angleOff||0))*Math.PI/180;
   const wx=-Math.sin(ang), wz=-Math.cos(ang); // wind travel direction
   const px=Math.cos(ang), pz=-Math.sin(ang);  // perpendicular
-  const spread=Math.max(w,d)*1.5;
-  for(let i=0;i<p.count;i++){
-    let x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-    // Main velocity along wind direction + per-particle jitter
-    let vx=wx*.25+vs[i].x, vy=vs[i].y, vz=wz*.25+vs[i].z;
-    // Deflect around the building
-    if(Math.abs(x)<w/2+2 && Math.abs(z)<d/2+2 && y<h+2){
-      vy+=.15;
-      // Push sideways (perpendicular to wind) away from centre
-      const side=x*px+z*pz;
-      vx+=px*(side>0?.1:-.1);
-      vz+=pz*(side>0?.1:-.1);
+  const spread=Math.max(w,d)*1.35;
+  particleSys.userData.tick = (particleSys.userData.tick || 0) + 1;
+  const t = particleSys.userData.tick * 0.045;
+  for(let i=0;i<arrows.length;i++){
+    const a = arrows[i];
+    a.upDist -= a.speed;
+    a.side += a.sideDrift;
+    let x = -wx*a.upDist + px*a.side;
+    let y = a.baseY + Math.sin(t + a.phase)*0.12;
+    let z = -wz*a.upDist + pz*a.side;
+    if(Math.abs(x)<w/2+2.5 && Math.abs(z)<d/2+2.5 && y<h+2.5){
+      y += 0.45;
+      const sideSign = (x*px + z*pz) >= 0 ? 1 : -1;
+      x += px*(0.18*sideSign);
+      z += pz*(0.18*sideSign);
     }
-    x+=vx;y+=vy;z+=vz;
-    // Reset if particle traveled too far downwind or out of bounds
-    const downwind=x*wx+z*wz;
-    if(downwind>Math.max(w,d)+15||y<-1||y>h*3){
-      const upDist=Math.random()*5+15;
-      const side2=(Math.random()-.5)*spread;
-      x=-wx*upDist+px*side2;
-      y=Math.random()*h*2;
-      z=-wz*upDist+pz*side2;
+    if((-x*wx - z*wz)>Math.max(w,d)+18 || y<-1 || y>h*3 || Math.abs(a.side) > spread*0.75){
+      a.upDist = Math.random()*10 + 18;
+      a.side = (Math.random()-.5)*spread;
+      a.baseY = 0.6 + Math.random()*Math.max(2.6,h*1.25);
+      x = -wx*a.upDist + px*a.side;
+      y = a.baseY;
+      z = -wz*a.upDist + pz*a.side;
     }
-    p.setXYZ(i,x,y,z);
+    a.arrow.setDirection(new THREE.Vector3(wx,0,wz).normalize());
+    a.arrow.position.set(x,y,z);
   }
-  p.needsUpdate=true;
 }
 
 // ═══════════════════════════════════════════════
@@ -9862,7 +9899,7 @@ function toggleFeature(key,btnId){
     }
     return;
   }
-  if(key==='showParticles'&&!S.showParticles&&particleSys){scene.remove(particleSys);particleSys.geometry.dispose();particleSys.material.dispose();particleSys=null;return}
+  if(key==='showParticles'&&!S.showParticles&&particleSys){ disposeWindFlow(); return }
   rebuild();
 }
 function setViewMode(m){
