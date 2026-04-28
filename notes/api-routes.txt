@@ -1,0 +1,17 @@
+fetch('/api/activity-log
+fetch('/api/activity-log?projectId=
+fetch('/api/api-keys
+fetch('/api/api-keys/
+fetch('/api/check-subscription
+fetch('/api/create-checkout-session
+fetch('/api/create-portal-session
+fetch('/api/delete-project
+fetch('/api/enterprise-enquiry
+fetch('/api/invite-member
+fetch('/api/list-projects
+fetch('/api/load-project?id=
+fetch('/api/rvt-status?urn=
+fetch('/api/save-project
+fetch('/api/shared-projects
+fetch('/api/templates
+fetch('/api/templates/

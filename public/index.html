@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StructuralWind — Professional Wind Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Firebase Auth SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ═══ Top Ribbon ═══ -->
+    <nav class="top-nav" id="top-nav">
+        <div class="nav-brand">
+            <span class="brand-icon" aria-hidden="true">💨</span>
+            <div class="brand-stack">
+                <span class="brand-text">STRUCTURALWIND</span>
+                <span class="brand-tagline">Design to AS/NZS 1170.2:2021</span>
+            </div>
+        </div>
+        <div class="main-tabs">
+            <button class="main-tab" id="mtab-structure" onclick="switchMainTab('structure')">BUILDING</button>
+            <button class="main-tab active" id="mtab-site" onclick="switchMainTab('site')">LOCATION</button>
+            <button class="main-tab" id="mtab-about" onclick="switchMainTab('about')">ABOUT</button>
+        </div>
+        <div class="nav-right">
+            <button class="btn-upgrade" id="btn-upgrade" onclick="openPaymentModal()" style="display:none">⚡ Upgrade</button>
+            <button class="btn-account" id="btn-account" onclick="toggleAccountMenu()">👤</button>
+        </div>
+    </nav>
+
+    <!-- Lee Zone Notification -->
+    <div class="lee-notification" id="lee-notification" style="display:none">
+        <span class="lee-text"></span>
+        <button class="lee-dismiss" onclick="dismissLeeZone()" title="Dismiss">✕</button>
+    </div>
+
+    <!-- Account dropdown -->
+    <div class="account-menu" id="account-menu">
+        <div class="acct-header"><div class="acct-avatar">👤</div><div><div class="acct-name" id="acct-name">Guest User</div><div class="acct-plan" id="acct-plan">Free Plan</div></div></div>
+        <div class="acct-divider"></div>
+        <button id="btn-signin-menu" onclick="showAuthOverlay()" style="display:none">🔑 Sign In</button>
+        <button id="btn-dashboard-menu" onclick="window.location.href='dashboard.html'" style="display:none">📊 Dashboard</button>
+        <button id="btn-saved-projects" onclick="openSavedProjects()" style="display:none">📂 My Projects</button>
+        <button id="btn-shared-projects" onclick="openSharedProjects()" style="display:none">🔗 Shared Projects</button>
+        <button id="btn-share-project-menu" onclick="shareCurrentProject()" title="Share with team (Team/Enterprise)" style="display:none">🔗 Share Project</button>
+        <button id="btn-activity-log" onclick="openActivityLog()" style="display:none">📝 Activity Log</button>
+        <button id="btn-api-keys" onclick="openApiKeys()" style="display:none">🔐 API Keys</button>
+        <button id="btn-templates" onclick="openTemplates()" style="display:none">📋 Templates</button>
+        <button id="btn-manage-billing" onclick="openBillingPortal()" style="display:none">💳 Manage Billing</button>
+        <button onclick="exportAllProjects()">📁 Export Projects</button>
+        <button onclick="window.location.href='about.html'">ℹ️ About</button>
+        <button id="btn-signout-menu" onclick="signOutUser()" style="display:none">🚪 Sign Out</button>
+    </div>
+
+    <!-- ═══ Auth Overlay ═══ -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-card">
+            <h2>💨 Welcome to StructuralWind</h2>
+            <p>Sign in to save your calculations and access Pro features</p>
+            <button type="button" class="btn-google" onclick="signInWithGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="18" height="18" aria-hidden="true">
+                Sign in with Google
+            </button>
+            <button type="button" class="btn-microsoft" onclick="signInWithMicrosoft()">
+                <svg class="btn-microsoft-logo" width="18" height="18" viewBox="0 0 21 21" aria-hidden="true" focusable="false"><path fill="#f25022" d="M1 1h9v9H1z"/><path fill="#7fba00" d="M11 1h9v9h-9z"/><path fill="#00a4ef" d="M1 11h9v9H1z"/><path fill="#ffb900" d="M11 11h9v9h-9z"/></svg>
+                Sign in with Microsoft
+            </button>
+            <div class="auth-footer">
+                <p>By signing in, you agree to our Terms of Service</p>
+                <button onclick="closeAuthOverlay()" style="background:transparent;border:none;color:var(--primary);cursor:pointer;margin-top:8px;font-size:12px">Continue as Guest →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Pressure calculation breakdown (Pressures tab) ═══ -->
+    <div class="modal-overlay" id="pressure-calc-modal" aria-hidden="true" onclick="if(event.target===this) closePressureCalcModal()">
+        <div class="modal-card pressure-calc-card" role="dialog" aria-labelledby="pressure-calc-title" onclick="event.stopPropagation()">
+            <button type="button" class="modal-close" onclick="closePressureCalcModal()" aria-label="Close">✕</button>
+            <div class="pressure-calc-head">
+                <span class="pressure-calc-icon" aria-hidden="true">ⓘ</span>
+                <div>
+                    <h3 id="pressure-calc-title" class="pressure-calc-title"></h3>
+                    <p id="pressure-calc-sub" class="pressure-calc-sub"></p>
+                </div>
+            </div>
+            <div id="pressure-calc-body" class="pressure-calc-body"></div>
+            <div class="pressure-calc-footer">
+                <button type="button" class="pressure-calc-ok" onclick="closePressureCalcModal()">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="pressure-hover-tip" class="pressure-hover-tip" hidden role="tooltip" aria-hidden="true"></div>
+
+    <!-- ═══ Payment Modal ═══ -->
+    <div class="modal-overlay" id="payment-modal">
+        <div class="modal-card" style="max-width:960px">
+            <button class="modal-close" onclick="closePaymentModal()">✕</button>
+            <h2 style="color:var(--primary);text-align:center;margin-bottom:4px">⚡ Choose Your Plan</h2>
+            <p style="text-align:center;color:var(--text2);font-size:13px;margin-bottom:16px">Start with a 1-month free trial on paid plans, then unlock unlimited calculations, PDF exports, shared projects & more</p>
+            <div class="plans-grid plans-grid-4">
+                <!-- FREE -->
+                <div class="plan-card">
+                    <div class="plan-name">Free</div>
+                    <div class="plan-price">$0<span>/month</span></div>
+                    <div class="plan-members">1 user</div>
+                    <ul class="plan-features">
+                        <li class="included">✅ 3 projects</li>
+                        <li class="included">✅ Basic wind analysis</li>
+                        <li class="excluded">❌ PDF export</li>
+                        <li class="excluded">❌ Save calculations</li>
+                        <li class="excluded">❌ Shared projects</li>
+                    </ul>
+                    <button class="plan-btn current" id="plan-btn-free">Current Plan</button>
+                </div>
+                <!-- PRO -->
+                <div class="plan-card featured">
+                    <div class="plan-popular">MOST POPULAR</div>
+                    <div class="plan-name">Pro</div>
+                    <div class="plan-price">$10<span> NZD/month</span></div>
+                    <div class="plan-members">1 user</div>
+                    <ul class="plan-features">
+                        <li class="included">✅ 1-month free trial</li>
+                        <li class="included">✅ Unlimited calculations</li>
+                        <li class="included">✅ Full AS/NZS 1170.2</li>
+                        <li class="included">✅ Full IFC model analysis features</li>
+                        <li class="included">✅ PDF export</li>
+                        <li class="included">✅ Save & load projects</li>
+                        <li class="excluded">❌ Shared projects</li>
+                    </ul>
+                    <button class="plan-btn" id="plan-btn-pro" onclick="startCheckout('pro')">Subscribe Now</button>
+                </div>
+                <!-- TEAM -->
+                <div class="plan-card">
+                    <div class="plan-name">Team</div>
+                    <div class="plan-price">$30<span> NZD/month</span></div>
+                    <div class="plan-members">Up to 5 users</div>
+                    <ul class="plan-features">
+                        <li class="included">✅ 1-month free trial</li>
+                        <li class="included">✅ Everything in Pro</li>
+                        <li class="included">✅ Shared team projects</li>
+                        <li class="included">✅ See who made changes</li>
+                        <li class="included">✅ Activity log</li>
+                        <li class="included">✅ API access (30/mo)</li>
+                        <li class="included">✅ Priority support</li>
+                    </ul>
+                    <button class="plan-btn" id="plan-btn-team" onclick="startCheckout('team')">Subscribe Now</button>
+                </div>
+                <!-- ENTERPRISE -->
+                <div class="plan-card">
+                    <div class="plan-name">Enterprise</div>
+                    <div class="plan-price" style="font-size:28px">Custom</div>
+                    <div class="plan-members">Unlimited users</div>
+                    <ul class="plan-features">
+                        <li class="included">✅ Everything in Team</li>
+                        <li class="included">✅ SSO / SAML</li>
+                        <li class="included">✅ Custom branding & templates</li>
+                        <li class="included">✅ Batch API (5,000+/mo)</li>
+                        <li class="included">✅ Dedicated support & SLA</li>
+                    </ul>
+                    <button class="plan-btn" id="plan-btn-enterprise" onclick="startCheckout('enterprise')">Contact Us</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         BUILDING TAB CONTENT
+         ═══════════════════════════════════════════ -->
+    <div class="tab-content" id="tc-structure" style="display:none">
+        <!-- Building subtabs -->
+        <div class="structure-subtabs" id="structure-subtabs">
+            <button class="struct-subtab active" id="sstab-model" onclick="switchStructureSubtab('model')">3D Model</button>
+            <button class="struct-subtab" id="sstab-document" onclick="switchStructureSubtab('document')">Detailed Report</button>
+        </div>
+
+        <!-- ═══ Subtab: 3D Model ═══ -->
+        <div id="struct-model" class="struct-panel">
+
+        <!-- 3D Toolbar -->
+        <div class="toolbar" id="toolbar-structure">
+            <button id="btn-solid" class="active" onclick="setViewMode('solid')">Solid</button>
+            <button id="btn-transparent" onclick="setViewMode('transparent')">Transparent</button>
+            <button id="btn-wireframe" onclick="setViewMode('wireframe')">Wireframe</button>
+            <span class="toolbar-divider"></span>
+            <button id="btn-heatmap" class="active" onclick="toggleFeature('showHeatmap','btn-heatmap')">🌡️ Heatmap</button>
+            <button id="btn-pressuremap" type="button" title="Local Pressure Zones (Table 5.6 Kl mesh) for cladding/glazing &amp; immediate supporting-member design; Cl 3.3(b) M_d=1 in B2/C/D; default Cp,i −0.3/+0.2. No separate cladding/glazing checkboxes." onclick="toggleFeature('showPressureMap','btn-pressuremap')">🗺️ Local Pressure Zones</button>
+            <button id="btn-particles" onclick="toggleFeature('showParticles','btn-particles')">💨 Wind Flow</button>
+            <button id="btn-arrows" onclick="toggleFeature('showPressureArrows','btn-arrows')">↗️ Pressure</button>
+            <button id="btn-internal" onclick="toggleFeature('showInternalPressure','btn-internal')">📦 Internal P</button>
+            <button id="btn-dimensions" class="active" onclick="toggleFeature('showDimensions','btn-dimensions')">📐 Dims</button>
+            <button id="btn-labels" class="active" onclick="toggleFeature('showLabels','btn-labels')">🏷️ Labels</button>
+            <button id="btn-shadows" class="active" onclick="toggleShadows()">🌤️ Shadows</button>
+            <button id="btn-grid" class="active" onclick="toggleGrid()">⊞ Grid</button>
+            <span class="toolbar-divider"></span>
+            <button id="btn-lock" onclick="toggleAnalysisLock()" title="Lock/unlock analysis results and site map pin">🔓 Unlocked</button>
+            <span class="toolbar-divider"></span>
+            <button id="btn-darkmode" onclick="toggleDarkMode()">🌙 Dark</button>
+            <button onclick="takeScreenshot()">📷</button>
+            <button onclick="exportPDF()">📄 PDF</button>
+            <button onclick="exportExcel()">📊 Excel</button>
+            <button onclick="resetCamera()">🔄 Reset</button>
+        </div>
+        <!-- Not display:none — browsers often block programmatic .click() on hidden file inputs. Use label[for] below. -->
+        <input type="file" id="model-file-input" class="file-input-screen-only" accept=".glb,.gltf,.obj,.fbx,.ifc,.rvt" tabindex="-1" aria-label="Choose 3D model file" onchange="handleModelUpload(event)">
+
+        <!-- Upload Model Bar (below toolbar) -->
+        <div class="model-upload-bar" id="model-upload-bar">
+            <span class="beta-badge">BETA</span>
+            <button type="button" id="btn-upload-model" class="upload-model-btn" title="Upload 3D model (.glb, .gltf, .obj, .ifc, .rvt)" onclick="document.getElementById('model-file-input').click()">📁 Upload Model</button>
+            <button id="btn-toggle-model" onclick="toggleUploadedModel()" style="display:none" title="Toggle between parametric and uploaded model">🔀 Toggle Model</button>
+            <button id="btn-remove-model" onclick="removeUploadedModel()" style="display:none" title="Remove uploaded model">🗑️ Remove</button>
+            <span class="model-status-text" id="model-status-text" style="display:none"></span>
+            <span class="model-status-info" id="model-status-info"></span>
+        </div>
+
+        <!-- Left Panel – Building Inputs + Analysis -->
+        <div class="panel-left" id="panel-left-structure">
+
+            <!-- IFC Drop Zone (top) -->
+            <div class="panel-section ifc-dropzone-section">
+                <h3>📦 Upload IFC Model <span class="beta-badge">BETA</span></h3>
+                <div class="ifc-dropzone" id="ifc-dropzone" role="button" tabindex="0" onclick="document.getElementById('model-file-input').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('model-file-input').click();}">
+                    <div class="ifc-dropzone-icon">📐</div>
+                    <div class="ifc-dropzone-text">Drag &amp; drop .IFC file here</div>
+                    <div class="ifc-dropzone-sub">or click to browse &bull; also supports .GLB .OBJ .FBX</div>
+                    <div class="ifc-signin-hint" id="ifc-signin-hint" style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.4">IFC/BIM files load in your browser — no sign-in required.</div>
+                </div>
+                <p class="beta-disclaimer">⚠️ 3D model upload &amp; wind zone detection is still in beta. Meshes are classified with an in-browser trained MLP (IFC type hints when available); wind zones use surface normals vs wind. Low-confidence meshes stay uncoloured.</p>
+            </div>
+
+            <div class="panel-section">
+                <h3>📐 Building Dimensions</h3>
+                <label>Width (m): <span id="val-width">20</span></label>
+                <input type="range" id="inp-width" min="3" max="80" value="20" step="0.5" oninput="onInput()">
+                <label>Depth (m): <span id="val-depth">15</span></label>
+                <input type="range" id="inp-depth" min="3" max="80" value="15" step="0.5" oninput="onInput()">
+                <label>Eave Height (m): <span id="val-height">6</span></label>
+                <input type="range" id="inp-height" min="2" max="40" value="6" step="0.5" oninput="onInput()">
+                <div style="margin-top:6px;font-size:11px;color:var(--text2)">
+                    Ref Height: <span id="val-ref-height" style="color:var(--primary);font-weight:700">—</span>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3>🏠 Roof</h3>
+                <label>Type</label>
+                <input type="hidden" id="inp-rooftype" value="gable">
+                <div class="btn-row rooftype-row" role="group" aria-label="Roof type">
+                    <button type="button" class="rooftype-btn" data-roof="flat" aria-pressed="false" onclick="setRoofType('flat')">Flat</button>
+                    <button type="button" class="rooftype-btn active" data-roof="gable" aria-pressed="true" onclick="setRoofType('gable')">Gable</button>
+                    <button type="button" class="rooftype-btn" data-roof="hip" aria-pressed="false" onclick="setRoofType('hip')">Hip</button>
+                    <button type="button" class="rooftype-btn" data-roof="monoslope" aria-pressed="false" onclick="setRoofType('monoslope')">Monoslope</button>
+                </div>
+                <label>Pitch (°): <span id="val-pitch">15</span></label>
+                <input type="range" id="inp-pitch" min="0" max="45" value="15" step="1" oninput="onInput()">
+                <label>Parapet (m): <span id="val-parapet">0</span></label>
+                <input type="range" id="inp-parapet" min="0" max="3" value="0" step="0.1" oninput="onInput()">
+                <label>Overhang (m): <span id="val-overhang">0.5</span></label>
+                <input type="range" id="inp-overhang" min="0" max="3" value="0.5" step="0.1" oninput="onInput()">
+            </div>
+            <div class="panel-section">
+                <h3>🌬️ Wind Direction</h3>
+                <label>Direction (°): <span id="val-winddir">315</span></label>
+                <input type="range" id="inp-winddir" min="0" max="355" value="315" step="5" oninput="onWindDirSlider(this.value)">
+                <div style="font-size:10px;color:var(--text2);margin-top:2px">0°=N, 90°=E, 180°=S, 270°=W</div>
+            </div>
+            <div class="panel-section">
+                <h3>🚪 Openings</h3>
+                <label>Windward (%): <span id="val-open-ww">5</span></label>
+                <div class="opening-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                    <input type="number" id="inp-open-ww" min="0" max="60" step="0.01" value="5" title="Exact %" style="width:4.75rem;padding:4px 6px" oninput="syncOpeningPct('ww', this.value)">
+                    <input type="range" id="inp-open-ww-range" min="0" max="60" value="5" step="0.01" style="flex:1;min-width:0" oninput="syncOpeningPct('ww', this.value)">
+                </div>
+                <label>Leeward (%): <span id="val-open-lw">5</span></label>
+                <div class="opening-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                    <input type="number" id="inp-open-lw" min="0" max="60" step="0.01" value="5" title="Exact %" style="width:4.75rem;padding:4px 6px" oninput="syncOpeningPct('lw', this.value)">
+                    <input type="range" id="inp-open-lw-range" min="0" max="60" value="5" step="0.01" style="flex:1;min-width:0" oninput="syncOpeningPct('lw', this.value)">
+                </div>
+                <label>Side (%): <span id="val-open-sw">5</span></label>
+                <div class="opening-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+                    <input type="number" id="inp-open-sw" min="0" max="60" step="0.01" value="5" title="Exact %" style="width:4.75rem;padding:4px 6px" oninput="syncOpeningPct('sw', this.value)">
+                    <input type="range" id="inp-open-sw-range" min="0" max="60" value="5" step="0.01" style="flex:1;min-width:0" oninput="syncOpeningPct('sw', this.value)">
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3>🧱 Permeable Cladding (K<sub>p</sub>)</h3>
+                <label>Cladding Permeability</label>
+                <select id="inp-kp" onchange="onInput()">
+                    <option value="1.0" selected>Solid (K<sub>p</sub> = 1.0)</option>
+                    <option value="auto">Permeable — Table 5.8 zones</option>
+                    <option value="0.9">Uniform K<sub>p</sub> = 0.9</option>
+                    <option value="0.8">Uniform K<sub>p</sub> = 0.8</option>
+                    <option value="0.7">Uniform K<sub>p</sub> = 0.7</option>
+                </select>
+                <div id="kp-info" style="margin-top:4px;font-size:10px;color:var(--text2);display:none">
+                    Table 5.8: Open area ratio &gt; 0.1% and &lt; 1%. K<sub>p</sub> reduces <em>negative</em> pressure on roofs &amp; side walls.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel – Results + Analysis Summary -->
+        <div class="panel-right" id="panel-right-structure">
+            <h3 class="pressure-rhs-heading">⚙️ Pressure design</h3>
+            <div class="panel-section">
+                <h3 class="section-header">LIMIT STATE</h3>
+                <div class="btn-row limitstate-row" role="group" aria-label="Limit state">
+                    <button type="button" class="limitstate-btn active" data-limit="ultimate" onclick="setLimitState('ultimate')" title="Ultimate limit state">ULS</button>
+                    <button type="button" class="limitstate-btn" data-limit="serviceability" onclick="setLimitState('serviceability')" title="Serviceability limit state">SLS</button>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3 class="section-header">INTERNAL PRESSURE — Cl 5.3</h3>
+                <label style="font-size:11px;color:var(--text2)">Building Permeability</label>
+                <div class="perm-grid" id="perm-grid">
+                    <button class="perm-btn active" data-perm="auto" onclick="setPermCondition('auto')" title="Auto-detect from opening % on Building tab">
+                        <span class="perm-icon">⚙️</span><span class="perm-name">Auto</span>
+                    </button>
+                    <button class="perm-btn" data-perm="sealed" onclick="setPermCondition('sealed')" title="Table 5.1(A) — Effectively sealed, openings &lt; 0.1%">
+                        <span class="perm-icon">🔒</span><span class="perm-name">Sealed</span>
+                    </button>
+                    <button class="perm-btn" data-perm="permeable" onclick="setPermCondition('permeable')" title="Table 5.1(A) — All walls permeable (0.1–0.5%)">
+                        <span class="perm-icon">🏢</span><span class="perm-name">Permeable</span>
+                    </button>
+                    <button class="perm-btn" data-perm="dom-ww" onclick="setPermCondition('dom-ww')" title="Table 5.1(B) — Dominant opening on windward wall">
+                        <span class="perm-icon">🚪</span><span class="perm-name">WW Open</span>
+                    </button>
+                    <button class="perm-btn" data-perm="dom-lw" onclick="setPermCondition('dom-lw')" title="Table 5.1(B) — Dominant opening on leeward/side">
+                        <span class="perm-icon">🪟</span><span class="perm-name">LW Open</span>
+                    </button>
+                </div>
+                <div class="perm-clause" id="perm-clause">Table 5.1 — Auto-detecting from opening percentages</div>
+                <div id="cpi-mode-banner" class="hint-text" style="font-size:11px;color:var(--accent);margin:6px 0 0;line-height:1.45" aria-live="polite"></div>
+                <label class="check-label" style="margin-top:4px"><input type="checkbox" id="cpi-manual-toggle" onchange="toggleCpiManual()" title="Overrides both Table 5.1 auto and Local Pressure Zones default Cp,i (−0.3 / +0.2)."> Manual Cp,i override</label>
+                <div id="cpi-manual-fields" style="display:none;margin-top:4px">
+                    <div class="info-row"><label>Cp,i Case 1</label><input type="text" id="cpi1-manual" value="0.7" onchange="recalcPressures()"></div>
+                    <div class="info-row"><label>Cp,i Case 2</label><input type="text" id="cpi2-manual" value="-0.65" onchange="recalcPressures()"></div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3 class="section-header">PRESSURE CASES — Kc Table 5.5</h3>
+                <div class="info-row kc-diagram-trigger"><label>Design case</label>
+                    <select id="kc-design-case" onchange="setKcDesignCase(this.value)">
+                        <option value="a">(a) WW+LW+roof, small pi</option>
+                        <option value="b">(b) WW+LW+roof+internal</option>
+                        <option value="c">(c) SW+roof, small pi</option>
+                        <option value="d">(d) SW+roof+internal</option>
+                        <option value="e">(e) Roof alone</option>
+                        <option value="f" selected>(f) Roof+internal</option>
+                        <option value="g">(g) Lateral WW+LW</option>
+                        <option value="h">(h) Lateral walls+internal</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <div class="kc-diagram-popup" id="kc-diagram-popup">
+                        <svg id="kc-diagram-svg" viewBox="0 0 200 155" xmlns="http://www.w3.org/2000/svg"></svg>
+                    </div>
+                </div>
+                <div class="info-row"><label>Kc,i</label><select id="kci1-val" onchange="onKcManualChange()">
+                    <option value="0.8">0.8</option>
+                    <option value="0.9">0.9</option>
+                    <option value="1.0" selected>1.0</option>
+                </select><label style="min-width:auto;margin-left:8px">Kc,e</label><select id="kce1-val" onchange="onKcManualChange()">
+                    <option value="0.8">0.8</option>
+                    <option value="0.9" selected>0.9</option>
+                    <option value="1.0">1.0</option>
+                </select></div>
+                <div id="kc-hint" class="kc-hint" style="display:none"></div>
+                <div id="kc-warn" class="kc-warn" style="display:none"></div>
+                <div class="kc-case-divider"></div>
+                <div class="kc-case-header">Case 1 (−ve Cp,i)</div>
+                <div class="info-row"><label>Cp,i</label><span class="cpi-auto-val" id="auto-cpi1">-0.30</span></div>
+                <div class="info-row"><label>pi</label><span id="pi1-display" class="computed">2.02 kPa</span></div>
+                <div class="kc-case-divider"></div>
+                <div class="kc-case-header">Case 2 (+ve Cp,i)</div>
+                <div class="info-row"><label>Cp,i</label><span class="cpi-auto-val" id="auto-cpi2">+0.00</span></div>
+                <div class="info-row"><label>pi</label><span id="pi2-display" class="computed">-1.88 kPa</span></div>
+            </div>
+            <div class="panel-section kv-override-section">
+                <h3 class="section-header kv-equation-anchor">VOLUME FACTOR OVERRIDE <span class="kv-hover-hint" title="Hover for Clause 5.3.4">ⓘ</span></h3>
+                <div id="kv-equation-popup" class="kv-equation-popup" role="tooltip" hidden></div>
+                <p style="font-size:10px;color:var(--text2);margin:0 0 8px;line-height:1.35">AS/NZS 1170.2 Cl 5.3.4 — internal pressure volume factor from opening ratio (see hover).</p>
+                <div class="info-row"><label>Volume <i>V</i></label><span class="vol-kv-input-wrap"><input type="number" class="inp-vol-kv" id="inp-vol-kv" min="0.001" step="0.1" value="0" onchange="onVolKvChange()" title="Envelope volume from Building tab; enable override below to type a different V for Cl 5.3.4"><span class="vol-kv-unit">m³</span></span></div>
+                <div class="info-row"><label>Total open area</label><span id="open-area-display">0 m²</span></div>
+                <div class="info-row"><label>Governing <i>A</i> (max wall)</label><span id="kv-a-display">—</span></div>
+                <div class="info-row"><label>Computed <i>K<sub>v</sub></i></label><span id="kv-computed-display">1.000</span></div>
+                <label class="check-label" style="margin-top:6px"><input type="checkbox" id="kv-override-toggle" onchange="onKvOverrideToggle()"> Override volume <i>V</i> for <i>K<sub>v</sub></i></label>
+                <div class="info-row" style="margin-top:6px"><label>Design <i>K<sub>v</sub></i></label><span id="kv-display" class="computed">1.000</span></div>
+            </div>
+        </div>
+
+        <!-- Face tooltip -->
+        <div class="face-info" id="face-info">
+            <h4 id="fi-title">-</h4>
+            <div class="fi-row"><span class="fi-lbl">Cp,e</span><span class="fi-val" id="fi-cpe">-</span></div>
+            <div id="fi-zones" class="fi-zones" style="display:none" aria-hidden="true"></div>
+            <div class="fi-row"><span class="fi-lbl">Kl</span><span class="fi-val" id="fi-kl">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">Kp</span><span class="fi-val" id="fi-kp">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">Kr</span><span class="fi-val" id="fi-kr">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">Cp,i</span><span class="fi-val" id="fi-cpi">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">Cp,i (alt)</span><span class="fi-val" id="fi-cpi-case2">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">qz (kPa)</span><span class="fi-val" id="fi-qz">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">p (kPa)</span><span class="fi-val" id="fi-p">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">p_net case 1 (kPa)</span><span class="fi-val" id="fi-p-case1">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">p_net case 2 (kPa)</span><span class="fi-val" id="fi-p-case2">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">Area (m²)</span><span class="fi-val" id="fi-area">-</span></div>
+            <div class="fi-row"><span class="fi-lbl">F (kN)</span><span class="fi-val" id="fi-force">-</span></div>
+            <div class="fi-clause" id="fi-clause">-</div>
+            <div class="fi-row" id="fi-upload-diag-row" style="display:none"><span class="fi-lbl">Classify</span><span class="fi-val" id="fi-upload-diag" style="font-size:10px;line-height:1.35;max-width:220px">-</span></div>
+            <div id="fi-override-row" class="fi-row" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">
+              <label for="fi-override-select" style="font-size:11px">Override zone</label>
+              <select id="fi-override-select" style="max-width:150px;font-size:11px"></select>
+              <button type="button" id="fi-override-apply" onclick="applyUploadFaceOverrideFromUi()">Apply</button>
+              <button type="button" id="fi-override-clear" onclick="clearUploadFaceOverrideFromUi()" style="font-size:11px">Clear</button>
+            </div>
+            <div id="fi-retrain-row" class="fi-row" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">
+              <span class="fi-lbl" style="font-size:11px" id="fi-retrain-summary">0 corrections</span>
+              <button type="button" id="fi-retrain-apply" onclick="retrainUploadFromUi()" style="font-size:11px" title="Retrain the classifier on your captured face corrections and reclassify immediately">🧠 Retrain</button>
+              <button type="button" id="fi-retrain-reset" onclick="resetMeshClassifierWeightsFromUi()" style="font-size:11px" title="Clear persisted retrained weights and reload the baseline">Reset</button>
+            </div>
+        </div>
+        <div class="wind-compass" id="wind-compass" title="Drag to change wind direction"><canvas id="compass-canvas" width="130" height="130"></canvas></div>
+
+        </div><!-- /struct-model -->
+
+        <!-- ═══ Subtab: Detailed Report ═══ -->
+        <div id="struct-document" class="struct-panel" style="display:none">
+            <div class="document-container">
+                <div class="doc-toolbar">
+                    <button onclick="saveProject()">💾 Save Project</button>
+                    <button onclick="exportPDF()">📄 Export PDF Report ⚡</button>
+                    <button onclick="exportExcel()">📊 Export Excel</button>
+                    <button onclick="exportAllProjects()">📁 Export JSON</button>
+                    <button onclick="printReport()">🖨️ Print</button>
+                    <button onclick="shareCurrentProject()" title="Share with team (Team/Enterprise)">🔗 Share Project</button>
+                </div>
+                <div class="doc-preview" id="doc-preview">
+                    <!-- High-level summary rendered here -->
+                </div>
+            </div>
+        </div><!-- /struct-document (Detailed Report) -->
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         LOCATION TAB CONTENT
+         ═══════════════════════════════════════════ -->
+    <div class="tab-content" id="tc-site">
+        <div class="structure-subtabs" id="site-subtabs">
+            <button class="struct-subtab active" id="site-subtab-location" onclick="switchSiteSubtab('location')">Location</button>
+            <button class="struct-subtab" id="site-subtab-topography" onclick="switchSiteSubtab('topography')">View Topography</button>
+        </div>
+        <div id="site-panel-location">
+        <div class="site-left-panel" id="site-left-panel">
+            <!-- Lat/lng/elevation kept for script + save/load; coordinates shown on map overlay -->
+            <div class="site-location-hidden-inputs" aria-hidden="true">
+                <input type="hidden" id="inp-lat" value="-36.8485">
+                <input type="hidden" id="inp-lng" value="174.7633">
+                <input type="hidden" id="inp-elevation" value="">
+            </div>
+            <div class="panel-section">
+                <label>Importance Level</label>
+                <input type="hidden" id="inp-importance" value="2">
+                <div class="btn-row seg-row" id="seg-importance" role="group" aria-label="Importance level">
+                    <button type="button" class="seg-btn" data-il="1" aria-pressed="false" onclick="setImportanceLevel(1)">1</button>
+                    <button type="button" class="seg-btn active" data-il="2" aria-pressed="true" onclick="setImportanceLevel(2)">2</button>
+                    <button type="button" class="seg-btn" data-il="3" aria-pressed="false" onclick="setImportanceLevel(3)">3</button>
+                    <button type="button" class="seg-btn" data-il="4" aria-pressed="false" onclick="setImportanceLevel(4)">4</button>
+                </div>
+                <label>Life</label>
+                <input type="hidden" id="inp-life" value="50">
+                <div class="btn-row seg-row" id="seg-life" role="group" aria-label="Design life">
+                    <button type="button" class="seg-btn" data-life="25" aria-pressed="false" onclick="setDesignLifeYears(25)">25 yr</button>
+                    <button type="button" class="seg-btn active" data-life="50" aria-pressed="true" onclick="setDesignLifeYears(50)">50 yr</button>
+                    <button type="button" class="seg-btn" data-life="100" aria-pressed="false" onclick="setDesignLifeYears(100)">100 yr</button>
+                </div>
+            </div>
+            <div class="panel-section">
+                <label for="region-display">Region</label>
+                <input type="hidden" id="inp-region" value="NZ1">
+                <div id="region-display" class="region-readonly" title="Auto-detected from map pin location">NZ1</div>
+                <p id="panel-terrain-data-status" class="panel-terrain-data-status" style="display:none" aria-live="polite"></p>
+                <label>Design ARI (ULS wind)</label>
+                <div id="val-design-ari" style="font-size:13px;font-weight:600;color:var(--primary);margin:4px 0 2px">500 yr (P ≈ 2.00e-3 /yr, 1/500)</div>
+                <p style="font-size:10px;color:var(--text2);margin:0 0 6px;line-height:1.35">From AS/NZS 1170.0 Table 3.3 using Importance Level and Design Life above.</p>
+                <div class="btn-row" style="margin-bottom:8px"><button type="button" onclick="releaseVrManual();onInput()" title="Set V_R from Table 3.1 for the design ARI">Reset V<sub>R</sub> to Table 3.1</button></div>
+                <div class="wind-field"><label>Ultimate V<sub>R</sub></label><input type="text" id="inp-windspeed" value="66" class="highlight-green" onchange="onWindSpeedManualEdit();onInput()" title="Override regional wind speed; Reset restores Table 3.1 value"> m/s</div>
+                <div class="wind-field"><label>Serviceability V<sub>R</sub></label><input type="text" id="inp-svc-vr" value="47" readonly> m/s</div>
+            </div>
+            <!-- 8-Direction Multiplier Tabs -->
+            <div class="panel-section">
+                <div class="dir-tabs">
+                    <button class="dir-tab" id="dtab-Md" onclick="switchDirTab('Md')">Md</button>
+                    <button class="dir-tab active" id="dtab-Mzcat" onclick="switchDirTab('Mzcat')">Mz,cat</button>
+                    <button class="dir-tab" id="dtab-Ms" onclick="switchDirTab('Ms')">Ms</button>
+                    <button class="dir-tab" id="dtab-Mt" onclick="switchDirTab('Mt')">Mt</button>
+                    <button class="dir-tab" id="dtab-Mlee" onclick="switchDirTab('Mlee')">Mlee</button>
+                    <button class="dir-tab" id="dtab-Vsit" onclick="switchDirTab('Vsit')">Vsit,β</button>
+                </div>
+                <div class="dir-polar-anchor">
+                    <div class="dir-table" id="dir-table-content">
+                        <!-- Populated by JS: polar SVG + notes -->
+                    </div>
+                    <div id="dir-polar-popover" class="dir-polar-popover" hidden></div>
+                </div>
+            </div>
+            <!-- Off-screen canvas for PDF export only; site wind rose is the Vsit,β polar tab above -->
+            <canvas id="vsit-rose-canvas" width="210" height="230" class="vsit-rose-export-canvas" aria-hidden="true"></canvas>
+        </div>
+        <div id="map-container">
+            <div id="leaflet-map"></div>
+            <div class="map-north-overlay" role="img" aria-label="North points toward the top of the map">
+                <svg class="map-north-svg" viewBox="0 0 48 72" width="40" height="60" aria-hidden="true" focusable="false">
+                    <!-- no SVG filters — feDropShadow can contribute to GPU compositing glitches on some Windows setups -->
+                    <line x1="24" y1="64" x2="24" y2="28" stroke="#00d2ff" stroke-width="3.5" stroke-linecap="round"/>
+                    <path d="M24 4 L42 30 L32 30 L32 64 L16 64 L16 30 L6 30 Z" fill="#00d2ff"/>
+                    <text x="24" y="70" text-anchor="middle" fill="#e8eaf6" font-size="11" font-weight="800" font-family="Segoe UI,system-ui,sans-serif">N</text>
+                </svg>
+            </div>
+            <div class="map-find-address-bar">
+                <button type="button" class="map-find-address-btn" onclick="searchLocation()">Find Address</button>
+            </div>
+            <div class="map-overlay-info" id="map-overlay-info">
+                <div>Latitude: <b id="map-cur-lat">-</b></div>
+                <div>Longitude: <b id="map-cur-lng">-</b></div>
+                <div>Distance: <b id="map-cur-dist">-</b></div>
+            </div>
+            <div id="map-ms-shield-hint" class="map-ms-shield-hint" style="display:none" role="status" aria-live="polite"></div>
+            <div id="map-terrain-data-status" class="map-terrain-data-status" style="display:none" role="status" aria-live="polite"></div>
+            <div class="map-controls-bar" role="toolbar" aria-label="Map controls">
+                <button type="button" onclick="clearMultipliers()" title="Reset directional multipliers to defaults">Clear</button>
+                <span class="map-ctrl-divider" aria-hidden="true"></span>
+                <button onclick="toggleMapSatellite()">🛰️ Satellite</button>
+                <button onclick="centerMapOnBuilding()">🎯 Center</button>
+                <button onclick="toggleMapOverlay('tc')" id="btn-ov-tc">TC Zones</button>
+                <button onclick="toggleMapOverlay('ms')" id="btn-ov-ms">Ms Shielding</button>
+                <button onclick="toggleMapOverlay('mt')" id="btn-ov-mt">Mt Topographic</button>
+                <span class="map-ctrl-divider" aria-hidden="true"></span>
+                <button type="button" id="btn-lock-site" onclick="toggleAnalysisLock()" title="Lock/unlock analysis results and site map pin (same as Building tab)">🔓 Unlocked</button>
+            </div>
+            <div class="map-orientation-bar">
+                <label style="font-size:11px;color:var(--text2);margin-right:6px">🧭 Building Orientation</label>
+                <input type="range" id="inp-building-angle" min="0" max="359" value="0" style="width:120px;vertical-align:middle" oninput="onBuildingAngleChange(this.value)">
+                <span id="building-angle-label" style="font-size:11px;color:var(--accent);margin-left:6px;min-width:28px">0°</span>
+                <button onclick="onBuildingAngleChange(0);document.getElementById('inp-building-angle').value=0" style="margin-left:6px;font-size:10px;padding:2px 6px" title="Reset to 0°">↺</button>
+            </div>
+            <div class="map-overlay-legend" id="map-ms-legend" style="display:none">
+                <div class="legend-title">Legend <button onclick="document.getElementById('map-ms-legend').style.display='none'" style="float:right;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer">✕</button></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#00e676"></span> Ms = 1.0 (No shielding)</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ffab00"></span> Ms = 0.9 – 0.99</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ff5252"></span> Ms &lt; 0.9 (Shielded)</div>
+                <div class="legend-row"><span class="legend-swatch" style="border:2px dashed #aaa;background:transparent"></span> Distance rings</div>
+                <div class="legend-row"><span class="legend-swatch" style="border:2px solid #6666cc;background:transparent"></span> Sector boundaries</div>
+            </div>
+            <div class="map-overlay-legend" id="map-mt-legend" style="display:none">
+                <div class="legend-title">Mt Topographic <button onclick="document.getElementById('map-mt-legend').style.display='none'" style="float:right;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer">✕</button></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#00e676"></span> Mt = 1.0 (Flat terrain)</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#76ff03"></span> Mt ≤ 1.05</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ffab00"></span> Mt ≤ 1.15</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ff6d00"></span> Mt ≤ 1.30</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ff1744"></span> Mt &gt; 1.30 (Severe)</div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ffcc00;border-radius:50%"></span> Mh at sector edges</div>
+                <div class="legend-row"><span class="legend-swatch" style="border:2px dashed #cc99ff;background:transparent"></span> 750 m radius ring</div>
+                <div class="legend-row"><span class="legend-swatch" style="border:2px solid #9966cc;background:transparent"></span> Sector boundaries</div>
+            </div>
+        </div>
+        </div><!-- /site-panel-location -->
+
+        <!-- ═══ Location subtab: View Topography ═══ -->
+        <div id="struct-topography" class="struct-panel" style="display:none">
+            <div class="topo-container">
+                <div class="topo-header">
+                    <h3>Topographic Profiles — Mt Calculation (AS/NZS 1170.2 Cl 4.4.2)</h3>
+                    <div class="topo-controls">
+                        <button onclick="toggleAllTopoCards(true)">▼ Expand All</button>
+                        <button onclick="toggleAllTopoCards(false)">▲ Collapse All</button>
+                        <label style="display:inline;margin-right:0">Show:
+                            <select id="topo-filter" onchange="renderTopoProfiles()" style="width:auto;display:inline-block;min-width:140px">
+                                <option value="cardinal">8 Cardinal Directions</option>
+                                <option value="governing">Governing Sub-directions</option>
+                                <option value="all">All 32 Sub-directions</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <div class="topo-profiles" id="topo-profiles">
+                    <p style="color:var(--text2);text-align:center;padding:40px">Run site detection to generate topographic profiles.</p>
+                </div>
+            </div>
+        </div><!-- /struct-topography -->
+
+    </div>
+
+    <!-- Detailed pressure tables sit below the 3D view on the Building → 3D Model subtab -->
+
+    <!-- ═══════════════════════════════════════════
+         ABOUT TAB CONTENT
+         ═══════════════════════════════════════════ -->
+    <div class="tab-content" id="tc-about" style="display:none">
+        <div class="about-container">
+            <div class="about-hero">
+                <div class="about-hero-inner">
+                    <h1>💨 StructuralWind</h1>
+                    <p class="about-tagline">Professional Wind Load Analysis — AS/NZS 1170.2:2021</p>
+                </div>
+            </div>
+            <div class="about-content">
+                <div class="about-section">
+                    <h2>About Us</h2>
+                    <p>StructuralWind is a professional wind load analysis tool built for structural engineers, building designers, and construction professionals across New Zealand and Australia.</p>
+                    <p>Our mission is to make AS/NZS 1170.2:2021 wind load calculations <strong>fast, accurate, and accessible</strong> — reducing the time spent on manual calculations so engineers can focus on design.</p>
+                    <p class="trial-callout"><strong>🎁 New users can start with a 1-month free trial</strong> on paid plans to evaluate advanced analysis, reporting, and collaboration features.</p>
+                    <div class="about-video-wrap">
+                        <h3>Product Video</h3>
+                        <video class="about-video" controls preload="metadata">
+                            <source src="./Jake Gray_s Video - Apr 25, 2026.mp4" type="video/mp4">
+                            Your browser does not support HTML5 video playback.
+                        </video>
+                    </div>
+                </div>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <div class="about-card-icon">📐</div>
+                        <h3>3D Visualization</h3>
+                        <p>Interactive 3D building model with real-time pressure heatmaps, wind flow particles, and pressure arrows.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🌍</div>
+                        <h3>Location-Based</h3>
+                        <p>GPS-accurate site location with terrain category mapping, shielding analysis, and topographic multipliers.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">📊</div>
+                        <h3>8-Direction Analysis</h3>
+                        <p>Full directional wind speed analysis with M<sub>d</sub>, M<sub>z,cat</sub>, M<sub>s</sub>, and M<sub>t</sub> for every cardinal direction.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">📄</div>
+                        <h3>PDF Reports</h3>
+                        <p>Detailed, clause-referenced reports compliant with AS/NZS 1170.2:2021 — ready for council submissions.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🧱</div>
+                        <h3>Wall & Roof Pressures</h3>
+                        <p>External, internal, and local pressure coefficients per Tables 5.1–5.6 with net pressure calculations.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">⚡</div>
+                        <h3>Instant Results</h3>
+                        <p>Change any parameter and see results update in real-time — no waiting, no page reloads.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🏢</div>
+                        <h3>IFC Model Upload (Beta)</h3>
+                        <p>Import IFC and supported mesh formats to analyze real project geometry in-browser with face-level wind context.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🗺️</div>
+                        <h3>Local Pressure Zones</h3>
+                        <p>Render roof and wall local pressure zones visually and align them with tabulated local pressure outputs.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">👥</div>
+                        <h3>Team Collaboration</h3>
+                        <p>Share projects with your team, track who changed what, and keep wind analysis workflows aligned across multiple engineers.</p>
+                    </div>
+                </div>
+                <div class="about-section">
+                    <h2>Standards Compliance</h2>
+                    <p>All calculations are performed in accordance with:</p>
+                    <ul>
+                        <li><strong>AS/NZS 1170.2:2021</strong> — Structural design actions — Wind actions</li>
+                        <li><strong>AS/NZS 1170.0:2002</strong> — Structural design actions — General principles</li>
+                        <li><strong>NZS 3604:2011</strong> — Timber-framed buildings (wind zone classification)</li>
+                    </ul>
+                </div>
+                <div class="about-section">
+                    <h2>Disclaimer</h2>
+                    <p>StructuralWind is a design aid tool. The engineer of record is responsible for verifying all inputs, assumptions, and results. This software does not replace professional engineering judgement.</p>
+                </div>
+                <div class="about-section about-contact">
+                    <h2>Contact</h2>
+                    <p>Questions, feedback, or feature requests? Get in touch:</p>
+                    <p>📧 <a href="mailto:support@structuralwind.com">support@structuralwind.com</a></p>
+                </div>
+                <div class="about-footer">
+                    <p>&copy; 2026 StructuralWind. All rights reserved. Made in New Zealand 🇳🇿 &amp; Australia 🇦🇺</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 3D view + tabulated pressures (center column) -->
+    <div id="model-center-stack" class="model-center-stack" style="display:none" aria-hidden="true">
+        <div id="canvas-container">
+            <div class="legend kl-legend-bar" id="legend" aria-label="Local pressure zone colours">
+                <h4 class="kl-legend-heading">Local Pressure Zones</h4>
+                <div id="kl-legend-swatches" class="kl-legend-swatches"></div>
+            </div>
+        </div>
+        <div id="model-pressure-tables" class="model-pressure-tables">
+            <div class="topo-card pressure-tables-drawer" id="pressure-tables-drawer">
+                <div class="topo-card-header" id="pressure-tables-drawer-header" role="button" tabindex="0" aria-expanded="false" aria-controls="pressure-tables-drawer-body" onclick="togglePressureTablesDrawer()" onkeydown="pressureTablesDrawerKeydown(event)">
+                    <h4><span class="expand-icon">▶</span>Surface pressures (AS/NZS 1170.2)</h4>
+                    <div class="topo-card-stats">
+                        <span>Heatmap vs local zone pressures</span>
+                        <span class="pressure-drawer-hint val">Click to expand</span>
+                    </div>
+                </div>
+                <div class="topo-card-body" id="pressure-tables-drawer-body">
+                    <div class="pressure-drawer-body-cols">
+                        <div class="pressure-drawer-col pressure-drawer-col-main">
+                            <div class="pressure-subtabs">
+                                <button type="button" class="ptab active" id="ptab-heatmap" onclick="switchPressureTab('heatmap')" title="External pressures for walls and roof (same basis as the 3D heatmap)" aria-label="Heatmap: external wall and roof pressures">Heatmap</button>
+                                <button type="button" class="ptab" id="ptab-local" onclick="switchPressureTab('local')" title="Table 5.6 local pressures for walls and roof — same basis as the Local Pressure Zones overlay" aria-label="Local Pressure Zones: wall and roof local tables">Local Pressure Zones</button>
+                            </div>
+                    <div id="pressure-heatmap-content">
+                        <h4>External (walls)</h4>
+                        <table class="press-table" id="tbl-ext-walls">
+                            <thead><tr><th>SURFACE</th><th>DISTANCE FROM EDGE</th><th title="K_a — area reduction factor (Table 5.4). p_e = q_z C_p,e K_a K_p (Cl. 5.3–5.4).">K<sub>a</sub></th><th>C<sub>p,e</sub></th><th title="Internal pressure combination factor (Table 5.2)">K<sub>c,i</sub></th><th title="External pressure combination factor (Table 5.2)">K<sub>c,e</sub></th><th title="Porous cladding area reduction factor (Table 5.8)">K<sub>p</sub></th><th>V<sub>sit,β</sub></th><th>q<sub>z</sub></th><th>p<sub>e</sub></th><th colspan="2">p<sub>net</sub></th></tr></thead>
+                            <tbody id="ext-walls-body"></tbody>
+                        </table>
+                        <h4 style="margin-top:16px">External (roof)</h4>
+                        <table class="press-table" id="tbl-ext-roof">
+                            <thead><tr><th>SURFACE</th><th>DISTANCE FROM EDGE</th><th title="K_a — area reduction factor (Table 5.4). p_e = q_z C_p,e K_a K_p (Cl. 5.3–5.4).">K<sub>a</sub></th><th>C<sub>p,e</sub></th><th title="Internal pressure combination factor (Table 5.2)">K<sub>c,i</sub></th><th title="External pressure combination factor (Table 5.2)">K<sub>c,e</sub></th><th title="Porous cladding area reduction factor (Table 5.8)">K<sub>p</sub></th><th>V<sub>sit,β</sub></th><th>q<sub>z</sub></th><th>p<sub>e</sub></th><th colspan="2">p<sub>net</sub></th></tr></thead>
+                            <tbody id="ext-roof-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="pressure-local-content" style="display:none">
+                        <h4>Local (walls)</h4>
+                        <table class="press-table" id="tbl-local-walls">
+                            <thead><tr><th>SURFACE</th><th>DISTANCE FROM EDGE</th><th>REFERENCE</th><th>AREA</th><th>K<sub>l</sub></th><th title="Internal pressure combination factor (Table 5.2)">K<sub>c,i</sub></th><th title="External pressure combination factor (Table 5.2)">K<sub>c,e</sub></th><th title="Porous cladding area reduction factor (Table 5.8)">K<sub>p</sub></th><th>V<sub>sit,β</sub></th><th>q<sub>z</sub></th><th>C<sub>shp,e</sub></th><th>p<sub>e</sub></th><th colspan="2">p<sub>net</sub></th></tr></thead>
+                            <tbody id="local-walls-body"></tbody>
+                        </table>
+                        <h4 style="margin-top:16px">Local (roof)</h4>
+                        <table class="press-table" id="tbl-local-roof">
+                            <thead><tr><th>SURFACE</th><th>DISTANCE FROM EDGE</th><th>REFERENCE</th><th>AREA</th><th>K<sub>l</sub></th><th title="Internal pressure combination factor (Table 5.2)">K<sub>c,i</sub></th><th title="External pressure combination factor (Table 5.2)">K<sub>c,e</sub></th><th title="Porous cladding area reduction factor (Table 5.8)">K<sub>p</sub></th><th>V<sub>sit,β</sub></th><th>q<sub>z</sub></th><th>C<sub>shp,e</sub></th><th>p<sub>e</sub></th><th colspan="2">p<sub>net</sub></th></tr></thead>
+                            <tbody id="local-roof-body"></tbody>
+                        </table>
+                    </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Production: same-origin Netlify functions (/api/*). CW_BUILDINGS_HYBRID_URL = /api/buildings-hybrid (Overpass + LINZ NZ outlines); localhost uses public Overpass unless port 8888/8889 (netlify dev). -->
+    <script>
+    (function(){
+      var h = location.hostname;
+      var isLocal = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '';
+      var isNetlifyDev = location.port === '8888' || location.port === '8889';
+      if(typeof window.CW_OVERPASS_PROXY_URL === 'undefined')
+        window.CW_OVERPASS_PROXY_URL = isLocal ? '' : '/api/overpass';
+      if(typeof window.CW_BUILDINGS_HYBRID_URL === 'undefined')
+        window.CW_BUILDINGS_HYBRID_URL = (isLocal && !isNetlifyDev) ? '' : '/api/buildings-hybrid';
+      if(typeof window.CW_ELEVATION_API_URL === 'undefined')
+        window.CW_ELEVATION_API_URL = isLocal ? '' : '/api/elevation-batch';
+      if(typeof window.STRUCTURALWIND_IFC_AI_URL === 'undefined')
+        window.STRUCTURALWIND_IFC_AI_URL = (isLocal && !isNetlifyDev) ? '' : '/api/ifc-ai-mesh';
+    })();
+    </script>
+    <script src="lib/terrain-samples.js"></script>
+    <script src="lib/elev-refine.js"></script>
+    <script src="lib/mh-topography.js"></script>
+    <script src="mesh-classifier.js"></script>
+    <script src="script.js?v=ifc-archive-path"></script>
+</body>
+</html>
