@@ -1677,6 +1677,11 @@ function applySiteLocationFromMap(lat, lng){
   if(ln) ln.value = S.lng.toFixed(6);
   try{ alignMapMarkerWithSiteState(); }catch(e){}
   resetSiteTerrainForNewPinLocation();
+  detectPendingOsm = true;
+  detectPendingElev = true;
+  setTerrainDataStatus('loading');
+  refreshDirectionalWindUI();
+  toast('⏳ Sampling terrain…');
   requestAnimationFrame(()=>{
     updateMapBuilding();
     scheduleSiteFollowUpAfterPinMove();
@@ -7846,7 +7851,7 @@ async function autoDetectAllMultipliers(opts){
   S.elevBearingsSub = null;
   refreshDirectionalWindUI();
   try{
-  toast('🔍 Detecting terrain, shielding & topography…');
+  toast(fromPin ? '⏳ Sampling terrain…' : '🔍 Detecting terrain, shielding & topography…');
   setTerrainDataStatus('loading');
 
   // Default arrays
