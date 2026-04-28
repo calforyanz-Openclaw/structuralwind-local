@@ -28,6 +28,7 @@
         <div class="main-tabs">
             <button class="main-tab" id="mtab-structure" onclick="switchMainTab('structure')">BUILDING</button>
             <button class="main-tab active" id="mtab-site" onclick="switchMainTab('site')">LOCATION</button>
+            <button class="main-tab" id="mtab-about" onclick="switchMainTab('about')">ABOUT</button>
         </div>
         <div class="nav-right">
             <button class="btn-account" id="btn-account" onclick="toggleAccountMenu()">👤</button>
@@ -48,6 +49,7 @@
         <button id="btn-dashboard-menu" onclick="window.location.href='dashboard.html'" style="display:none">📊 Dashboard</button>
         <button id="btn-saved-projects" onclick="openSavedProjects()" style="display:none">📂 My Projects</button>
         <button onclick="exportAllProjects()">📁 Export Projects</button>
+        <button onclick="window.location.href='about.html'">ℹ️ About</button>
         <button id="btn-signout-menu" onclick="signOutUser()" style="display:none">🚪 Sign Out</button>
     </div>
 
@@ -510,6 +512,96 @@
     </div>
 
     <!-- Detailed pressure tables sit below the 3D view on the Building → 3D Model subtab -->
+
+    <!-- ═══════════════════════════════════════════
+         ABOUT TAB CONTENT
+         ═══════════════════════════════════════════ -->
+    <div class="tab-content" id="tc-about" style="display:none">
+        <div class="about-container">
+            <div class="about-hero">
+                <div class="about-hero-inner">
+                    <h1>💨 Wind Analysis Tool</h1>
+                    <p class="about-tagline">Professional Wind Load Analysis — AS/NZS 1170.2:2021</p>
+                </div>
+            </div>
+            <div class="about-content">
+                <div class="about-section">
+                    <h2>About Us</h2>
+                    <p>A professional wind load analysis tool for structural engineers, building designers, and construction professionals across New Zealand and Australia.</p>
+                    <p>Our mission is to make AS/NZS 1170.2:2021 wind load calculations <strong>fast, accurate, and accessible</strong> — reducing the time spent on manual calculations so engineers can focus on design.</p>
+                    <div class="about-video-wrap">
+                        <h3>Product Video</h3>
+                        <video class="about-video" controls preload="metadata">
+                            <source src="./Jake Gray_s Video - Apr 25, 2026.mp4" type="video/mp4">
+                            Your browser does not support HTML5 video playback.
+                        </video>
+                    </div>
+                </div>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <div class="about-card-icon">📐</div>
+                        <h3>3D Visualization</h3>
+                        <p>Interactive 3D building model with real-time pressure heatmaps, wind flow particles, and pressure arrows.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🌍</div>
+                        <h3>Location-Based</h3>
+                        <p>GPS-accurate site location with terrain category mapping, shielding analysis, and topographic multipliers.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">📊</div>
+                        <h3>8-Direction Analysis</h3>
+                        <p>Full directional wind speed analysis with M<sub>d</sub>, M<sub>z,cat</sub>, M<sub>s</sub>, and M<sub>t</sub> for every cardinal direction.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">📄</div>
+                        <h3>PDF Reports</h3>
+                        <p>Detailed, clause-referenced reports compliant with AS/NZS 1170.2:2021 — ready for council submissions.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🧱</div>
+                        <h3>Wall & Roof Pressures</h3>
+                        <p>External, internal, and local pressure coefficients per Tables 5.1–5.6 with net pressure calculations.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">⚡</div>
+                        <h3>Instant Results</h3>
+                        <p>Change any parameter and see results update in real-time — no waiting, no page reloads.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🏢</div>
+                        <h3>IFC Model Upload (Beta)</h3>
+                        <p>Import IFC and supported mesh formats to analyze real project geometry in-browser with face-level wind context.</p>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-icon">🗺️</div>
+                        <h3>Local Pressure Zones</h3>
+                        <p>Render roof and wall local pressure zones visually and align them with tabulated local pressure outputs.</p>
+                    </div>
+                </div>
+                <div class="about-section">
+                    <h2>Standards Compliance</h2>
+                    <p>All calculations are performed in accordance with:</p>
+                    <ul>
+                        <li><strong>AS/NZS 1170.2:2021</strong> — Structural design actions — Wind actions</li>
+                        <li><strong>AS/NZS 1170.0:2002</strong> — Structural design actions — General principles</li>
+                        <li><strong>NZS 3604:2011</strong> — Timber-framed buildings (wind zone classification)</li>
+                    </ul>
+                </div>
+                <div class="about-section">
+                    <h2>Disclaimer</h2>
+                    <p>This is a design aid tool. The engineer of record is responsible for verifying all inputs, assumptions, and results. This software does not replace professional engineering judgement.</p>
+                </div>
+                <div class="about-section about-contact">
+                    <h2>Contact</h2>
+                    <p>Questions, feedback, or feature requests can be handled through your local workflow.</p>
+                </div>
+                <div class="about-footer">
+                    <p>&copy; 2026 Wind Analysis Tool</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
