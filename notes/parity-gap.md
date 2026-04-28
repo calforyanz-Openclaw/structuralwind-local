@@ -46,3 +46,8 @@
 - UI pixel parity against live site
 - Numerical parity against same inputs on live site
 - Endpoint-by-endpoint parity for all accessible user flows
+
+## Newly localized in this pass
+- `/api/elevation-batch` now served by local `server.mjs` via Open-Meteo
+- `/api/buildings-hybrid` now served by local `server.mjs` via Overpass
+- Frontend now points local app runs at same-origin `/api/*` routes

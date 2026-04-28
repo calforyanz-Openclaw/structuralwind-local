@@ -3,6 +3,8 @@ import { readFile, stat, mkdir, writeFile } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +25,14 @@ const contentTypes = {
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8'
 };
+
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter'
+];
+
+const execFileAsync = promisify(execFile);
 
 async function ensureData() {
   await mkdir(dataDir, { recursive: true });
@@ -67,6 +77,48 @@ function parseBody(req) {
   });
 }
 
+function parseForm(body) {
+  const params = new URLSearchParams(body);
+  return Object.fromEntries(params.entries());
+}
+
+async function postOverpass(query) {
+  let lastError = 'unknown_error';
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const { stdout } = await execFileAsync('curl', [
+        '--silent',
+        '--show-error',
+        '--max-time', '15',
+        endpoint,
+        '-H', 'content-type: application/x-www-form-urlencoded',
+        '--data-urlencode', `data=${query}`
+      ], { timeout: 20000, maxBuffer: 10 * 1024 * 1024 });
+      const data = JSON.parse(stdout);
+      return { ok: true, endpoint, data };
+    } catch (err) {
+      lastError = err?.message || 'fetch_failed';
+    }
+  }
+  return { ok: false, error: lastError };
+}
+
+async function fetchElevations(lats, lngs) {
+  const out = [];
+  const BATCH = 100;
+  for (let i = 0; i < lats.length; i += BATCH) {
+    const latBatch = lats.slice(i, i + BATCH).map(v => Number(v).toFixed(6)).join(',');
+    const lngBatch = lngs.slice(i, i + BATCH).map(v => Number(v).toFixed(6)).join(',');
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${latBatch}&longitude=${lngBatch}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`open_meteo_http_${resp.status}`);
+    const data = await resp.json();
+    if (!Array.isArray(data.elevation)) throw new Error('invalid_open_meteo_payload');
+    out.push(...data.elevation.map(Number));
+  }
+  return out;
+}
+
 async function loadProjects() {
   await ensureData();
   return JSON.parse(await readFile(projectsFile, 'utf8'));
@@ -79,6 +131,21 @@ async function saveProjects(projects) {
 
 async function handleApi(req, res, url) {
   if (req.method === 'OPTIONS') return sendJson(res, 204, {});
+
+  if (url.pathname === '/api/overpass' && req.method === 'POST') {
+    let raw = '';
+    await new Promise((resolve, reject) => {
+      req.on('data', chunk => { raw += chunk; });
+      req.on('end', resolve);
+      req.on('error', reject);
+    });
+    const form = parseForm(raw || '');
+    const query = form.data;
+    if (!query) return sendJson(res, 400, { error: 'Missing or invalid query' });
+    const result = await postOverpass(query);
+    if (!result.ok) return sendJson(res, 502, { error: result.error || 'Overpass failed' });
+    return sendJson(res, 200, result.data);
+  }
 
   if (url.pathname === '/api/check-subscription' && req.method === 'GET') {
     return sendJson(res, 200, {
@@ -131,7 +198,17 @@ async function handleApi(req, res, url) {
   if (url.pathname === '/api/buildings-hybrid' && req.method === 'POST') {
     const body = await parseBody(req);
     if (!body.query) return sendJson(res, 400, { error: 'Missing or invalid query' });
-    return sendJson(res, 501, { error: 'Not implemented locally yet', route: 'buildings-hybrid' });
+    const result = await postOverpass(body.query);
+    if (!result.ok) return sendJson(res, 502, { error: result.error || 'Overpass failed' });
+    return sendJson(res, 200, {
+      elements: Array.isArray(result.data?.elements) ? result.data.elements : [],
+      linz: {
+        added: 0,
+        skipped: true,
+        reason: 'local-build-no-linz-dataset'
+      },
+      source: 'local-overpass'
+    });
   }
 
   if (url.pathname === '/api/elevation-batch' && req.method === 'POST') {
@@ -139,7 +216,18 @@ async function handleApi(req, res, url) {
     if (!Array.isArray(body.lats) || !Array.isArray(body.lngs) || body.lats.length !== body.lngs.length) {
       return sendJson(res, 400, { error: 'lats and lngs must be equal-length arrays' });
     }
-    return sendJson(res, 501, { error: 'Not implemented locally yet', route: 'elevation-batch' });
+    try {
+      const lats = body.lats.map(Number);
+      const lngs = body.lngs.map(Number);
+      const elevations = await fetchElevations(lats, lngs);
+      return sendJson(res, 200, {
+        elevations,
+        source: 'open-meteo',
+        refined: false
+      });
+    } catch (err) {
+      return sendJson(res, 502, { error: err?.message || 'Elevation fetch failed' });
+    }
   }
 
   if (url.pathname.startsWith('/api/')) {

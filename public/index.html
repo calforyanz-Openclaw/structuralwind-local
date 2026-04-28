@@ -674,20 +674,17 @@
         </div>
     </div>
 
-    <!-- Production: same-origin Netlify functions (/api/*). CW_BUILDINGS_HYBRID_URL = /api/buildings-hybrid (Overpass + LINZ NZ outlines); localhost uses public Overpass unless port 8888/8889 (netlify dev). -->
+    <!-- Local build: prefer same-origin API routes on the local app server. -->
     <script>
     (function(){
-      var h = location.hostname;
-      var isLocal = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '';
-      var isNetlifyDev = location.port === '8888' || location.port === '8889';
       if(typeof window.CW_OVERPASS_PROXY_URL === 'undefined')
-        window.CW_OVERPASS_PROXY_URL = isLocal ? '' : '/api/overpass';
+        window.CW_OVERPASS_PROXY_URL = '/api/overpass';
       if(typeof window.CW_BUILDINGS_HYBRID_URL === 'undefined')
-        window.CW_BUILDINGS_HYBRID_URL = (isLocal && !isNetlifyDev) ? '' : '/api/buildings-hybrid';
+        window.CW_BUILDINGS_HYBRID_URL = '/api/buildings-hybrid';
       if(typeof window.CW_ELEVATION_API_URL === 'undefined')
-        window.CW_ELEVATION_API_URL = isLocal ? '' : '/api/elevation-batch';
+        window.CW_ELEVATION_API_URL = '/api/elevation-batch';
       if(typeof window.STRUCTURALWIND_IFC_AI_URL === 'undefined')
-        window.STRUCTURALWIND_IFC_AI_URL = (isLocal && !isNetlifyDev) ? '' : '/api/ifc-ai-mesh';
+        window.STRUCTURALWIND_IFC_AI_URL = '';
     })();
     </script>
     <script src="lib/terrain-samples.js"></script>
