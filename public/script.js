@@ -1675,9 +1675,12 @@ function applySiteLocationFromMap(lat, lng){
   const ln = document.getElementById('inp-lng');
   if(la) la.value = S.lat.toFixed(6);
   if(ln) ln.value = S.lng.toFixed(6);
+  try{ alignMapMarkerWithSiteState(); }catch(e){}
   resetSiteTerrainForNewPinLocation();
-  updateMapBuilding();
-  scheduleSiteFollowUpAfterPinMove();
+  requestAnimationFrame(()=>{
+    updateMapBuilding();
+    scheduleSiteFollowUpAfterPinMove();
+  });
 }
 
 /**
