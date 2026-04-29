@@ -6465,48 +6465,50 @@ function buildPArrows(){
     const ap = Math.abs(Number(f.p));
     if(Number.isFinite(ap) && ap > mx) mx = ap;
   }
-  function ar(o,dir,p,ml, headScale){
-    const len=Math.min(3.4, Math.max(0.38, Math.abs(Number(p)||0)/mx*ml));
+  function ar(o,dir,p,ml, headScale, labelScale){
+    const mag = Math.abs(Number(p)||0);
+    const len=Math.min(4.8, Math.max(0.85, mag/mx*ml));
     const c=p>0?0xff5544:0x4da3ff;
     const dd=dir.clone().normalize();if(p<0)dd.negate();
-    const ah = new THREE.ArrowHelper(dd,o,len,c, Math.max(0.22, len*(headScale||0.24)), Math.max(0.12, len*0.12));
+    const ah = new THREE.ArrowHelper(dd,o,len,c, Math.max(0.34, len*(headScale||0.28)), Math.max(0.18, len*0.18));
     if(ah.line && ah.line.material){ ah.line.material.transparent = true; ah.line.material.opacity = 0.92; }
     if(ah.cone && ah.cone.material){ ah.cone.material.transparent = true; ah.cone.material.opacity = 0.98; }
     grpArrows.add(ah);
+    const labelPos = o.clone().add(dd.clone().multiplyScalar(len + 0.45));
+    grpArrows.add(spriteText((p>0?'+':'') + Number(p).toFixed(2) + ' kPa', labelPos, c, labelScale || 0.34));
   }
   // Front/back faces — pressure from wind role
   for(let r=0;r<3;r++)for(let c=0;c<3;c++){
     const fx=(c+.5)/3-.5,fy=(r+.5)/3;
-    ar(new THREE.Vector3(fx*w,fy*h,d/2),new THREE.Vector3(0,0,-1),F[fm.front].p,3.2,0.26);
-    ar(new THREE.Vector3(fx*w,fy*h,-d/2),new THREE.Vector3(0,0,1),F[fm.back].p,3.2,0.26);
+    ar(new THREE.Vector3(fx*w,fy*h,d/2+0.12),new THREE.Vector3(0,0,-1),F[fm.front].p,4.1,0.3,0.36);
+    ar(new THREE.Vector3(fx*w,fy*h,-d/2-0.12),new THREE.Vector3(0,0,1),F[fm.back].p,4.1,0.3,0.36);
   }
   // Left/right faces — pressure from wind role
   for(let r=0;r<3;r++)for(let c=0;c<3;c++){
     const fz=(c+.5)/3-.5,fy=(r+.5)/3;
-    ar(new THREE.Vector3(-w/2,fy*h,fz*d),new THREE.Vector3(1,0,0),F[fm.left].p,3.2,0.26);
-    ar(new THREE.Vector3(w/2,fy*h,fz*d),new THREE.Vector3(-1,0,0),F[fm.right].p,3.2,0.26);
+    ar(new THREE.Vector3(-w/2-0.12,fy*h,fz*d),new THREE.Vector3(1,0,0),F[fm.left].p,4.1,0.3,0.36);
+    ar(new THREE.Vector3(w/2+0.12,fy*h,fz*d),new THREE.Vector3(-1,0,0),F[fm.right].p,4.1,0.3,0.36);
   }
-  // Roof — optional arrows (hidden with heatmap: zone colors + labels are enough; avoids cone clutter)
-  if(S.showHeatmap) return;
+  // Roof — always show when pressure arrows are on so uplift / downward pressure is legible even with heatmap.
   const ov = S.overhang || 0;
   const pRad = (S.pitch || 0) * Math.PI / 180;
   const rhGable = S.roofType !== 'flat' && S.roofType !== 'monoslope' ? Math.tan(pRad) * d / 2 : 0;
   const hz = d / 2 + ov;
-  const bump = 0.35;
+  const bump = 0.48;
   if(S.roofType === 'flat'){
     const pr = F.roof_ww?.p ?? 0;
-    for(let r=0;r<2;r++)for(let c=0;c<3;c++){
-      const fx=(c+.5)/3-.5, fz=(r+.5)/2-.5;
+    for(let r=0;r<3;r++)for(let c=0;c<4;c++){
+      const fx=(c+.5)/4-.5, fz=(r+.5)/3-.5;
       const o=new THREE.Vector3(fx*w, h+bump, fz*d);
-      ar(o, new THREE.Vector3(0,1,0), pr, 3.1, 0.28);
+      ar(o, new THREE.Vector3(0,1,0), pr, 4.0, 0.32, 0.34);
     }
   } else if(S.roofType === 'monoslope'){
     const monoRise = Math.tan(pRad) * d;
     const n = new THREE.Vector3(0, d + 2 * ov, monoRise).normalize();
-    for(let zi=-1; zi<=1; zi++)for(let xi=-1; xi<=1; xi++){
-      const o = new THREE.Vector3(xi*w/5, h + monoRise/2, zi*d/5);
+    for(let zi=-2; zi<=2; zi++)for(let xi=-1; xi<=1; xi++){
+      const o = new THREE.Vector3(xi*w/5, h + monoRise/2, zi*d/8);
       o.addScaledVector(n, bump);
-      ar(o, n, F.roof_ww?.p ?? 0, 3.1, 0.28);
+      ar(o, n, F.roof_ww?.p ?? 0, 4.0, 0.32, 0.34);
     }
   } else {
     const nFront = new THREE.Vector3(0, hz, rhGable).normalize();
@@ -6521,8 +6523,8 @@ function buildPArrows(){
     oB.addScaledVector(nBack, bump);
     for(let i=-2;i<=2;i++){
       const off = i * w / 10;
-      ar(oF.clone().setX(off), nFront, pF, 3.1, 0.28);
-      ar(oB.clone().setX(off), nBack, pB, 3.1, 0.28);
+      ar(oF.clone().setX(off), nFront, pF, 4.0, 0.32, 0.34);
+      ar(oB.clone().setX(off), nBack, pB, 4.0, 0.32, 0.34);
     }
   }
 }
