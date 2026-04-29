@@ -6465,23 +6465,26 @@ function buildPArrows(){
     const ap = Math.abs(Number(f.p));
     if(Number.isFinite(ap) && ap > mx) mx = ap;
   }
-  function ar(o,dir,p,ml){
-    const len=Math.min(2.8, Math.max(0.25, Math.abs(Number(p)||0)/mx*ml));
-    const c=p>0?0xff4444:0x4444ff;
+  function ar(o,dir,p,ml, headScale){
+    const len=Math.min(3.4, Math.max(0.38, Math.abs(Number(p)||0)/mx*ml));
+    const c=p>0?0xff5544:0x4da3ff;
     const dd=dir.clone().normalize();if(p<0)dd.negate();
-    grpArrows.add(new THREE.ArrowHelper(dd,o,len,c));
+    const ah = new THREE.ArrowHelper(dd,o,len,c, Math.max(0.22, len*(headScale||0.24)), Math.max(0.12, len*0.12));
+    if(ah.line && ah.line.material){ ah.line.material.transparent = true; ah.line.material.opacity = 0.92; }
+    if(ah.cone && ah.cone.material){ ah.cone.material.transparent = true; ah.cone.material.opacity = 0.98; }
+    grpArrows.add(ah);
   }
   // Front/back faces — pressure from wind role
   for(let r=0;r<3;r++)for(let c=0;c<3;c++){
     const fx=(c+.5)/3-.5,fy=(r+.5)/3;
-    ar(new THREE.Vector3(fx*w,fy*h,d/2),new THREE.Vector3(0,0,-1),F[fm.front].p,3);
-    ar(new THREE.Vector3(fx*w,fy*h,-d/2),new THREE.Vector3(0,0,1),F[fm.back].p,3);
+    ar(new THREE.Vector3(fx*w,fy*h,d/2),new THREE.Vector3(0,0,-1),F[fm.front].p,3.2,0.26);
+    ar(new THREE.Vector3(fx*w,fy*h,-d/2),new THREE.Vector3(0,0,1),F[fm.back].p,3.2,0.26);
   }
   // Left/right faces — pressure from wind role
   for(let r=0;r<3;r++)for(let c=0;c<3;c++){
     const fz=(c+.5)/3-.5,fy=(r+.5)/3;
-    ar(new THREE.Vector3(-w/2,fy*h,fz*d),new THREE.Vector3(1,0,0),F[fm.left].p,3);
-    ar(new THREE.Vector3(w/2,fy*h,fz*d),new THREE.Vector3(-1,0,0),F[fm.right].p,3);
+    ar(new THREE.Vector3(-w/2,fy*h,fz*d),new THREE.Vector3(1,0,0),F[fm.left].p,3.2,0.26);
+    ar(new THREE.Vector3(w/2,fy*h,fz*d),new THREE.Vector3(-1,0,0),F[fm.right].p,3.2,0.26);
   }
   // Roof — optional arrows (hidden with heatmap: zone colors + labels are enough; avoids cone clutter)
   if(S.showHeatmap) return;
@@ -6495,14 +6498,16 @@ function buildPArrows(){
     for(let r=0;r<2;r++)for(let c=0;c<3;c++){
       const fx=(c+.5)/3-.5, fz=(r+.5)/2-.5;
       const o=new THREE.Vector3(fx*w, h+bump, fz*d);
-      ar(o, new THREE.Vector3(0,1,0), pr, 3);
+      ar(o, new THREE.Vector3(0,1,0), pr, 3.1, 0.28);
     }
   } else if(S.roofType === 'monoslope'){
     const monoRise = Math.tan(pRad) * d;
     const n = new THREE.Vector3(0, d + 2 * ov, monoRise).normalize();
-    const o = new THREE.Vector3(0, h + monoRise / 2, 0);
-    o.addScaledVector(n, bump);
-    ar(o, n, F.roof_ww?.p ?? 0, 3);
+    for(let zi=-1; zi<=1; zi++)for(let xi=-1; xi<=1; xi++){
+      const o = new THREE.Vector3(xi*w/5, h + monoRise/2, zi*d/5);
+      o.addScaledVector(n, bump);
+      ar(o, n, F.roof_ww?.p ?? 0, 3.1, 0.28);
+    }
   } else {
     const nFront = new THREE.Vector3(0, hz, rhGable).normalize();
     const nBack  = new THREE.Vector3(0, hz, -rhGable).normalize();
@@ -6514,10 +6519,10 @@ function buildPArrows(){
     const oB = new THREE.Vector3(0, h + rhGable / 2, -zc);
     oF.addScaledVector(nFront, bump);
     oB.addScaledVector(nBack, bump);
-    for(let i=-1;i<=1;i+=2){
-      const off = i * w / 6;
-      ar(oF.clone().setX(off), nFront, pF, 3);
-      ar(oB.clone().setX(off), nBack, pB, 3);
+    for(let i=-2;i<=2;i++){
+      const off = i * w / 10;
+      ar(oF.clone().setX(off), nFront, pF, 3.1, 0.28);
+      ar(oB.clone().setX(off), nBack, pB, 3.1, 0.28);
     }
   }
 }
@@ -6589,6 +6594,7 @@ function buildNorthArrow(){
 function buildParticles(){
   if(particleSys){scene.remove(particleSys);particleSys.geometry.dispose();particleSys.material.dispose();particleSys=null}
   const N=720,pos=new Float32Array(N*3),cols=new Float32Array(N*3),meta=[];
+  const flowArrowCount = 28;
   const w=S.width,d=S.depth,h=S.height;
   const ang=(S.windAngle+(S.R.angleOff||0))*Math.PI/180;
   const wx=-Math.sin(ang), wz=-Math.cos(ang); // wind travel direction
@@ -6626,7 +6632,17 @@ function buildParticles(){
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('color',new THREE.BufferAttribute(cols,3));
   particleSys=new THREE.Points(g,new THREE.PointsMaterial({size:.18,vertexColors:true,transparent:true,opacity:.72,blending:THREE.AdditiveBlending,depthWrite:false}));
-  particleSys.userData.meta=meta;scene.add(particleSys);
+  particleSys.userData.meta=meta;
+  particleSys.userData.flowArrows=[];
+  for(let i=0;i<flowArrowCount;i++){
+    const idx = Math.min(N-1, Math.floor(i * N / flowArrowCount));
+    const arrow = new THREE.ArrowHelper(new THREE.Vector3(wx,0,wz).normalize(), new THREE.Vector3(pos[idx*3],pos[idx*3+1],pos[idx*3+2]), 1.35, 0xff8a7a, 0.42, 0.22);
+    if(arrow.line && arrow.line.material){ arrow.line.material.transparent = true; arrow.line.material.opacity = 0.88; }
+    if(arrow.cone && arrow.cone.material){ arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.96; }
+    particleSys.add(arrow);
+    particleSys.userData.flowArrows.push({ arrow, idx });
+  }
+  scene.add(particleSys);
 }
 function tickParticles(){
   if(!particleSys||!S.showParticles)return;
@@ -6686,6 +6702,9 @@ function tickParticles(){
       z=-wz*upDist+pz*side2;
     }
     p.setXYZ(i,x,y,z);
+    m.vx = vx;
+    m.vy = vy;
+    m.vz = vz;
 
     const localSpeed = Math.sqrt(vx*vx + vy*vy + vz*vz);
     const hot = Math.min(1, Math.max(0, (localSpeed - 0.12) / 0.2));
@@ -6698,6 +6717,20 @@ function tickParticles(){
   }
   p.needsUpdate=true;
   c.needsUpdate=true;
+
+  const flowArrows = particleSys.userData.flowArrows || [];
+  for(const item of flowArrows){
+    const i = item.idx;
+    if(i >= p.count) continue;
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const m = meta[i] || { vx: wx*0.2, vy: 0, vz: wz*0.2 };
+    const dir = new THREE.Vector3(m.vx || wx*0.2, m.vy || 0, m.vz || wz*0.2);
+    const mag = Math.max(0.0001, dir.length());
+    dir.normalize();
+    item.arrow.position.set(x,y,z);
+    item.arrow.setDirection(dir);
+    item.arrow.setLength(Math.min(1.9, Math.max(0.65, mag*4.2)), 0.42, 0.24);
+  }
 }
 
 // ═══════════════════════════════════════════════
