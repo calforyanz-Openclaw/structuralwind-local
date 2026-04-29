@@ -4877,11 +4877,11 @@ function spriteText(txt,pos,col,sc){
   const lines = String(txt).split('\n');
   const lineCount = lines.length;
   const c=document.createElement('canvas'),x=c.getContext('2d');
-  const fontSize = 48;
+  const fontSize = 64;
   const lineH = fontSize * 1.3;
-  c.width=512;c.height=Math.round(lineH * lineCount + 24);
+  c.width=640;c.height=Math.round(lineH * lineCount + 28);
   x.fillStyle='rgba(0,0,0,.7)';x.beginPath();
-  if(x.roundRect)x.roundRect(4,4,c.width-8,c.height-8,10); else x.fillRect(4,4,c.width-8,c.height-8);
+  if(x.roundRect)x.roundRect(4,4,c.width-8,c.height-8,12); else x.fillRect(4,4,c.width-8,c.height-8);
   x.fill();
   x.font='bold '+fontSize+'px Segoe UI,system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
   x.fillStyle='#'+col.toString(16).padStart(6,'0');
@@ -4889,7 +4889,7 @@ function spriteText(txt,pos,col,sc){
   const t=new THREE.CanvasTexture(c);
   const aspect = c.width / c.height;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
-  sp.position.copy(pos);sp.scale.set(sc*5, sc*5/aspect, 1);
+  sp.position.copy(pos);sp.scale.set(sc*6, sc*6/aspect, 1);
   return sp;
 }
 
@@ -5961,7 +5961,7 @@ function buildKlFlatRoof(w,d,h,ov){
       e.renderOrder = 2;
       grpBuild.add(e);
     }
-    grpBuild.add(spriteText(zoneName+' '+klP.toFixed(2)+' kPa', new THREE.Vector3(cx, h+0.3, cz), 0xffffff, 0.3));
+    grpBuild.add(spriteText(zoneName+' '+klP.toFixed(2)+' kPa', new THREE.Vector3(cx, h+0.3, cz), 0xffffff, 0.42));
   };
 
   if(edgeDist <= 0){
@@ -6162,7 +6162,7 @@ function buildKlRoofSlope(pts, faceKey, F, slopeW, slopeLen, a,
     center.y += 0.25;
     const patchArea = (u2-u1)*slopeW * (v2-v1)*slopeLen;
     if(patchArea > 0.5){
-      grpBuild.add(spriteText(zoneName+'\n'+klP.toFixed(2)+' kPa', center, 0xffffff, 0.35));
+      grpBuild.add(spriteText(zoneName+'\n'+klP.toFixed(2)+' kPa', center, 0xffffff, 0.48));
     }
   };
 
@@ -6307,7 +6307,7 @@ function buildKlHipRoof(w,d,h,rh,ov){
     const cx = (pts3[0].x+pts3[1].x+pts3[2].x)/3;
     const cy = (pts3[0].y+pts3[1].y+pts3[2].y)/3 + 0.25;
     const cz = (pts3[0].z+pts3[1].z+pts3[2].z)/3;
-    grpBuild.add(spriteText(zoneName+'\n'+klP.toFixed(2)+' kPa', new THREE.Vector3(cx,cy,cz), 0xffffff, 0.35));
+    grpBuild.add(spriteText(zoneName+'\n'+klP.toFixed(2)+' kPa', new THREE.Vector3(cx,cy,cz), 0xffffff, 0.48));
   };
 
   addHipTriangle([new THREE.Vector3(-w/2,h,d/2), new THREE.Vector3(-w/2,h,-d/2), a1], 'roof_hip_l');
@@ -6385,7 +6385,7 @@ function buildDims(){
   dimLine(new THREE.Vector3(w/2+off,0,d/2+off),new THREE.Vector3(w/2+off,h,d/2+off),h.toFixed(1)+'m',0x44ff88);
   if(S.pitch>0&&S.roofType!=='flat'){
     dimLine(new THREE.Vector3(-w/2-off,h,0),new THREE.Vector3(-w/2-off,h+rh,0),rh.toFixed(1)+'m',0xff4488);
-    grpDim.add(spriteText(S.pitch+'°',new THREE.Vector3(-w/2-off-1.5,h+rh/2,d/4),0xffcc00,.45));
+    grpDim.add(spriteText(S.pitch+'°',new THREE.Vector3(-w/2-off-1.5,h+rh/2,d/4),0xffcc00,.7));
     dimLine(new THREE.Vector3(-w/2-off-2.5,0,d/2+off),new THREE.Vector3(-w/2-off-2.5,h+rh,d/2+off),(h+rh).toFixed(1)+'m total',0xff8844);
   }
 }
@@ -6402,7 +6402,7 @@ function dimLine(a,b,label,col,targetGrp){
     grp.add(new THREE.Line(tg,new THREE.LineBasicMaterial({color:col})));
   });
   const mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);mid.y+=.5;
-  grp.add(spriteText(label,mid,col,.6));
+  grp.add(spriteText(label,mid,col,.9));
 }
 function dimLineNoLabel(a,b,col,targetGrp){
   const grp=targetGrp||grpDim;
@@ -6426,7 +6426,7 @@ function buildLabels(){
   const fm = getWindFaceMap();
   const rn = {windward:'Windward', leeward:'Leeward', sidewall1:'Side Wall L', sidewall2:'Side Wall R'};
   const rc = {windward:0x66bbff, leeward:0x66ff88, sidewall1:0xffaa44, sidewall2:0xffaa44};
-  const rs = {windward:.55, leeward:.55, sidewall1:.45, sidewall2:.45};
+  const rs = {windward:.8, leeward:.8, sidewall1:.68, sidewall2:.68};
 
   // Place labels at physical face centres with wind-role text
   grpLabel.add(spriteText(rn[fm.front], new THREE.Vector3(0,h/2,d/2+1.5), rc[fm.front], rs[fm.front]));
@@ -6448,7 +6448,7 @@ function buildLabels(){
       else if(k==='roof_lw') p = new THREE.Vector3(w/4,h+1.5,-d/4);
       else if(k==='roof_hip_l') p = new THREE.Vector3(-w/2.6,h+1.55,0);
       else if(k==='roof_hip_r') p = new THREE.Vector3(w/2.6,h+1.55,0);
-      if(p) grpLabel.add(spriteText(F[k].p.toFixed(2)+' kPa',p,0xffffff,.45));
+      if(p) grpLabel.add(spriteText(F[k].p.toFixed(2)+' kPa',p,0xffffff,.62));
     }
   }
 }
