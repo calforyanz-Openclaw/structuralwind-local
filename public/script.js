@@ -6470,11 +6470,12 @@ function buildPArrows(){
     const len=Math.min(4.8, Math.max(0.85, mag/mx*ml));
     const c=p>0?0xff5544:0x4da3ff;
     const dd=dir.clone().normalize();if(p<0)dd.negate();
-    const ah = new THREE.ArrowHelper(dd,o,len,c, Math.max(0.34, len*(headScale||0.28)), Math.max(0.18, len*0.18));
-    if(ah.line && ah.line.material){ ah.line.material.transparent = true; ah.line.material.opacity = 0.92; }
-    if(ah.cone && ah.cone.material){ ah.cone.material.transparent = true; ah.cone.material.opacity = 0.98; }
+    const origin = o.clone().add(dd.clone().multiplyScalar(p>0 ? -(len + 0.22) : 0.08));
+    const ah = new THREE.ArrowHelper(dd,origin,len,c, Math.max(0.34, len*(headScale||0.28)), Math.max(0.18, len*0.18));
+    if(ah.line && ah.line.material){ ah.line.material.transparent = true; ah.line.material.opacity = 0.94; ah.line.material.depthTest = false; }
+    if(ah.cone && ah.cone.material){ ah.cone.material.transparent = true; ah.cone.material.opacity = 0.99; ah.cone.material.depthTest = false; }
     grpArrows.add(ah);
-    const labelPos = o.clone().add(dd.clone().multiplyScalar(len + 0.45));
+    const labelPos = origin.clone().add(dd.clone().multiplyScalar(len + 0.45));
     grpArrows.add(spriteText((p>0?'+':'') + Number(p).toFixed(2) + ' kPa', labelPos, c, labelScale || 0.34));
   }
   // Front/back faces — pressure from wind role
