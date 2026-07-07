@@ -250,6 +250,8 @@ let autoDetectInFlight = false;
 let autoDetectQueued = false;
 /** Options passed through to the queued `autoDetectAllMultipliers` retry (e.g. fromPinMove). */
 let autoDetectQueuedOpts = null;
+/** Debounces rapid map clicks so only the final pin position starts detection. */
+let siteFollowUpTimer = null;
 /** Bumps when the site pin moves or Detect is re-triggered — stale async work must not apply results. */
 let siteDetectGeneration = 0;
 /** AbortController for the active auto-detect network work (Overpass); pin move aborts this. */
@@ -269,9 +271,9 @@ const CW_OVERPASS_CACHE_PREFIX = 'cw_osm_el_v1';
 const CW_OVERPASS_CACHE_TTL_MS = 15 * 60 * 1000;
 /** Max age for emergency reuse when every live fetch fails (still same cache key). */
 const CW_OVERPASS_CACHE_STALE_MAX_MS = 7 * 24 * 60 * 60 * 1000;
-const CW_OVERPASS_DEADLINE_MS = 120000;
-const CW_OVERPASS_PER_ATTEMPT_MS = 28000;
-const CW_OVERPASS_ATTEMPTS_PER_HOST = 3;
+const CW_OVERPASS_DEADLINE_MS = 40000;
+const CW_OVERPASS_PER_ATTEMPT_MS = 12000;
+const CW_OVERPASS_ATTEMPTS_PER_HOST = 1;
 
 function cwOverpassCacheKey(lat, lng, radius, fastDetect){
   const hybrid = (typeof window !== 'undefined' && window.CW_BUILDINGS_HYBRID_URL) ? 'h1' : 'h0';
@@ -389,12 +391,9 @@ function cwOverpassEndpointList(){
       out.push({ url: u, isProxy: true });
     }
   }
-  const pubs = CW_OVERPASS_PUBLIC_ENDPOINTS.slice();
-  for(let i = pubs.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    const t = pubs[i]; pubs[i] = pubs[j]; pubs[j] = t;
-  }
-  pubs.forEach(url=>{ out.push({ url, isProxy: false }); });
+  // Keep failover deterministic. Random ordering made identical locations vary
+  // from a fast first response to several long timeouts.
+  CW_OVERPASS_PUBLIC_ENDPOINTS.forEach(url=>{ out.push({ url, isProxy: false }); });
   return out;
 }
 
@@ -1589,6 +1588,10 @@ function addGround(){
  */
 function invalidateInFlightSiteDetect(){
   siteDetectGeneration++;
+  if(siteFollowUpTimer){
+    clearTimeout(siteFollowUpTimer);
+    siteFollowUpTimer = null;
+  }
   if(activeDetectAbort){
     try{ activeDetectAbort.abort(); }catch(e){}
     activeDetectAbort = null;
@@ -1653,14 +1656,18 @@ function alignMapMarkerWithSiteState(){
 function scheduleSiteFollowUpAfterPinMove(){
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
-      if(S.analysisLocked) return;
-      reverseGeocode(S.lat, S.lng);
-      const detectedRegion = autoDetectRegion(S.lat, S.lng);
-      if(detectedRegion){ applyRegion(detectedRegion); console.log('Region auto-detected:', detectedRegion); }
-      checkLeeZone();
-      calc();
-      refreshDirectionalWindUI();
-      autoDetectAllMultipliers({ fromPinMove: true });
+      if(siteFollowUpTimer) clearTimeout(siteFollowUpTimer);
+      siteFollowUpTimer = setTimeout(()=>{
+        siteFollowUpTimer = null;
+        if(S.analysisLocked) return;
+        reverseGeocode(S.lat, S.lng);
+        const detectedRegion = autoDetectRegion(S.lat, S.lng);
+        if(detectedRegion){ applyRegion(detectedRegion); console.log('Region auto-detected:', detectedRegion); }
+        checkLeeZone();
+        calc();
+        refreshDirectionalWindUI();
+        autoDetectAllMultipliers({ fromPinMove: true });
+      }, 400);
     });
   });
 }
@@ -7366,6 +7373,15 @@ function applyElevRefineIfNeeded(arr, opts){
 
 async function fetchElevBatchGlobal(latArr, lngArr, opts){
   opts = opts || {};
+  const signal = opts.signal;
+  const throwIfAborted = ()=>{
+    if(signal && signal.aborted){
+      const err = new Error('Elevation request aborted');
+      err.name = 'AbortError';
+      throw err;
+    }
+  };
+  throwIfAborted();
   const idbMeta = opts.elevIdb;
   const terrainIdbKey =
     idbMeta &&
@@ -7399,6 +7415,7 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
         method: 'POST',
         headers: hdrs,
         body: JSON.stringify(body),
+        signal,
       });
       const data = await resp.json().catch(()=>null);
       if(resp.ok && data && Array.isArray(data.elevations) && data.elevations.length === lats.length){
@@ -7418,6 +7435,7 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
         console.warn('Elevation API failed or invalid response (HTTP '+(resp && resp.status)+') — using direct providers');
       }
     } catch(e){
+      if(e && e.name === 'AbortError') throw e;
       console.warn('Elevation API error — using direct providers:', e && e.message);
     }
   }
@@ -7444,8 +7462,9 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
     const url = `https://api.open-meteo.com/v1/elevation?latitude=${bLats}&longitude=${bLngs}`;
     const maxAttempts = 8;
     for(let attempt=0; attempt<maxAttempts; attempt++){
+      throwIfAborted();
       try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal });
         if(resp.status === 429){
           console.warn('Open-Meteo 429 — switching to fallback elevation provider');
           return false;
@@ -7458,6 +7477,7 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
         if(resp.ok && data && data.error !== true && fillFromMeteoElev(start, end, data.elevation)) return true;
         return false;
       } catch(e){
+        if(e && e.name === 'AbortError') throw e;
         if(attempt === maxAttempts - 1) console.warn('Open-Meteo error (batch '+start+'):', e.message);
         await new Promise(r=>setTimeout(r, 600 * (attempt + 1)));
       }
@@ -7470,7 +7490,8 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
     const pts = [];
     for(let j=start; j<end; j++) pts.push([Number(latArr[j]), Number(lngArr[j])]);
     const euUrl = 'https://www.elevation-api.eu/v1/elevation?pts='+encodeURIComponent(JSON.stringify(pts));
-    const resp = await fetch(euUrl);
+    throwIfAborted();
+    const resp = await fetch(euUrl, { signal });
     const data = await resp.json().catch(()=>null);
     if(!resp.ok || !data || !Array.isArray(data.elevations) || data.elevations.length !== n) return false;
     for(let j=0; j<n; j++){
@@ -7486,7 +7507,8 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
     const pts = [];
     for(let j=start; j<end; j++) pts.push(Number(latArr[j]).toFixed(6)+','+Number(lngArr[j]).toFixed(6));
     const url = 'https://api.open-elevation.com/api/v1/lookup?locations=' + encodeURIComponent(pts.join('|'));
-    const resp = await fetch(url);
+    throwIfAborted();
+    const resp = await fetch(url, { signal });
     const data = await resp.json().catch(()=>null);
     if(!resp.ok || !data || !Array.isArray(data.results) || data.results.length !== n) return false;
     for(let j=0; j<n; j++){
@@ -7498,6 +7520,7 @@ async function fetchElevBatchGlobal(latArr, lngArr, opts){
   }
 
   for(let start=0; start<latArr.length; start+=BATCH){
+    throwIfAborted();
     const end = Math.min(start+BATCH, latArr.length);
     if(useOpenMeteo && start > 0) await new Promise(r=>setTimeout(r, 280));
 
@@ -8005,12 +8028,14 @@ async function autoDetectAllMultipliers(opts){
         euBatchGapMs: 40,
         elevIdb: { lat, lng, fast: true },
         elevationRefineMeta: { nSub: nSubMt, nDist: nDistMt },
+        signal: ac.signal,
       }
     : {
         openMeteoBatchGapMs: 280,
         euBatchGapMs: 120,
         elevIdb: { lat, lng, fast: false },
         elevationRefineMeta: { nSub: nSubMt, nDist: nDistMt },
+        signal: ac.signal,
       };
   const tDetect0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : null;
 
@@ -8508,6 +8533,7 @@ async function autoDetectAllMultipliers(opts){
       const bElevs = await fetchElevBatchGlobal(bLats, bLngs, {
         openMeteoBatchGapMs: elevBatchOpts.openMeteoBatchGapMs,
         euBatchGapMs: elevBatchOpts.euBatchGapMs,
+        signal: ac.signal,
       });
       if(runGen !== siteDetectGeneration) return;
       bElevs.forEach((elev,j)=>{ listForElev[j].elevation = elev; });
