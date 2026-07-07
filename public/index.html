@@ -664,11 +664,14 @@
     <!-- Local build: prefer same-origin API routes on the local app server. -->
     <script>
     (function(){
-      if(typeof window.CW_OVERPASS_PROXY_URL === 'undefined')
+      // GitHub Pages cannot serve application API routes. Leave these unset there
+      // so the client uses public-provider fallbacks without predictable 405s.
+      var hasSameOriginApi = location.hostname !== 'calforyanz-openclaw.github.io';
+      if(hasSameOriginApi && typeof window.CW_OVERPASS_PROXY_URL === 'undefined')
         window.CW_OVERPASS_PROXY_URL = '/api/overpass';
-      if(typeof window.CW_BUILDINGS_HYBRID_URL === 'undefined')
+      if(hasSameOriginApi && typeof window.CW_BUILDINGS_HYBRID_URL === 'undefined')
         window.CW_BUILDINGS_HYBRID_URL = '/api/buildings-hybrid';
-      if(typeof window.CW_ELEVATION_API_URL === 'undefined')
+      if(hasSameOriginApi && typeof window.CW_ELEVATION_API_URL === 'undefined')
         window.CW_ELEVATION_API_URL = '/api/elevation-batch';
       if(typeof window.WIND_ANALYSIS_IFC_AI_URL === 'undefined')
         window.WIND_ANALYSIS_IFC_AI_URL = '';
