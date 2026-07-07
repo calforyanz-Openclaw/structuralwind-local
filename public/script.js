@@ -658,7 +658,7 @@ function onVolKvChange(){
 }
 
 // ═════════════ INIT ═════════════
-(function init(){
+function init(){
   if(typeof THREE === 'undefined'){
     console.error('Wind Analysis: THREE.js did not load — check CDN / network.');
     return;
@@ -785,7 +785,11 @@ function onVolKvChange(){
 
   // Check for checkout result in URL
   checkCheckoutResult();
-})();
+}
+
+// Defer startup until the complete script has evaluated. init() reaches helpers
+// backed by later const declarations (for example REGION_VR and MD_TABLE).
+setTimeout(init, 0);
 
 function onResize(){
   const box = document.getElementById('canvas-container');
@@ -7050,7 +7054,11 @@ function renderDirTable(){
   const locked = S.analysisLocked;
   const terrainPolarBlocked = isTerrainPolarTab(tab) && !canUseTerrainPolarInteraction();
   const sectorLocked = locked || terrainPolarBlocked;
-  const showMzMsLoading = (tab === 'Mzcat' || tab === 'Ms') && detectPendingOsm;
+  // Mz,cat has a valid baseline from the selected/global terrain category as
+  // soon as calc() runs. Keep those values visible while OSM refines them.
+  const hasMzcatValues = Array.isArray(S.Mzcat) && S.Mzcat.some(v=>v != null && Number.isFinite(v));
+  const showMzMsLoading = (tab === 'Ms' && detectPendingOsm)
+    || (tab === 'Mzcat' && detectPendingOsm && !hasMzcatValues);
   /** Mt sampling is done when profiles + sub-direction Mh exist and site elevation is known (same markers as elev pipeline). */
   const mtElevSamplingDone = !!(S.detectedProfiles && Array.isArray(S.mhSub) && Number.isFinite(S.detectedSiteElev));
   const showMtLoading = tab === 'Mt' && detectPendingElev && !mtElevSamplingDone;
